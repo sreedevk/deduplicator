@@ -1,0 +1,16 @@
+[package]
+name = "deduplicator"
+version = "0.0.1"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+clap = { version = "4.0.32", features = ["derive"] }
+glob = "0.3.0"
+md5 = "0.7.0"
+sha256 = "1.1.1"
+sqlite = "0.30.3"
+thiserror = "1.0.38"
+tokio = { version = "1.23.0", features = ["full"] }
