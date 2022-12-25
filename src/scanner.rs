@@ -6,9 +6,9 @@ use anyhow::Result;
 use glob::glob;
 use std::{fs, io};
 
-pub fn duplicates(app_opts: App) -> Result<Vec<File>> {
-    index_files(scan(app_opts)?);
-    database::duplicate_hashes()
+pub fn duplicates(app_opts: App, connection: &sqlite::Connection) -> Result<Vec<File>> {
+    index_files(scan(app_opts)?, connection);
+    database::duplicate_hashes(connection)
 }
 
 fn scan(app_opts: App) -> Result<Vec<String>> {
@@ -46,7 +46,7 @@ fn scan(app_opts: App) -> Result<Vec<String>> {
     Ok(files)
 }
 
-fn index_files(files: Vec<String>) {
+fn index_files(files: Vec<String>, connection: &sqlite::Connection) {
     files
         .into_iter()
         .map(|file| {
@@ -54,7 +54,7 @@ fn index_files(files: Vec<String>) {
             database::File { path: file, hash }
         })
         .for_each(|file| {
-            database::put(file).unwrap();
+            database::put(&file, connection).unwrap();
         });
 }
 

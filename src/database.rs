@@ -6,8 +6,7 @@ pub struct File {
     pub hash: String,
 }
 
-pub fn setup() -> Result<()> {
-    let connection = sqlite::open(":memory:")?;
+pub fn setup(connection: &sqlite::Connection) -> Result<()> {
     let query = "CREATE TABLE files (file_identifier STRING, hash STRING)";
     match connection.execute(query) {
         Ok(_) => Ok(()),
@@ -15,10 +14,9 @@ pub fn setup() -> Result<()> {
     }
 }
 
-pub fn put(file: File) -> Result<()> {
-    let connection = sqlite::open(":memory:")?;
+pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
     let query = format!(
-        "INSERT INTO files (file_identifier, hash) VALUES ({}, {})",
+        "INSERT INTO files (file_identifier, hash) VALUES (\"{}\", \"{}\")",
         file.path, file.hash
     );
     let result = connection.execute(query)?;
@@ -26,8 +24,7 @@ pub fn put(file: File) -> Result<()> {
     Ok(result)
 }
 
-pub fn duplicate_hashes() -> Result<Vec<File>> {
-    let connection = sqlite::open(":memory:")?;
+pub fn duplicate_hashes(connection: &sqlite::Connection) -> Result<Vec<File>> {
     let query = format!(
         " 
             SELECT a.* FROM files a
@@ -35,7 +32,7 @@ pub fn duplicate_hashes() -> Result<Vec<File>> {
             FROM files 
             GROUP BY hash
             HAVING count(*) > 1 ) b
-            ON a.file_identifier = b.file_identifier
+            ON a.hash = b.hash
             ORDER BY a.file_identifier
         "
     );

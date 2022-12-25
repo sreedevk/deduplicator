@@ -7,8 +7,11 @@ use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    database::setup()?;
-    let duplicates = scanner::duplicates(cli::App::parse())?;
+    let connection = sqlite::open(":memory:")?;
+
+    database::setup(&connection)?;
+
+    let duplicates = scanner::duplicates(cli::App::parse(), &connection)?;
     dbg!(duplicates);
 
     Ok(())
