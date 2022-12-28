@@ -49,20 +49,3 @@ pub fn duplicate_hashes(connection: &sqlite::Connection) -> Result<Vec<File>> {
 
     Ok(result)
 }
-
-pub fn lookup(hash: &str) -> Result<Vec<File>> {
-    let connection = sqlite::open(":memory:")?;
-    let result_set = connection
-        .prepare("SELECT * FROM files WHERE hash = ?")?
-        .into_iter()
-        .bind((1, hash))?
-        .map(|row| row.unwrap())
-        .map(|row| {
-            let path = row.read::<&str, _>("file_identifier").to_owned();
-            let hash = row.read::<&str, _>("hash").to_owned();
-            File { path, hash }
-        })
-        .collect::<Vec<File>>();
-
-    Ok(result_set)
-}

@@ -4,7 +4,7 @@ use crate::{cli::App, database::File};
 use crate::database;
 use anyhow::Result;
 use glob::glob;
-use std::{fs, io};
+use std::fs;
 
 pub fn duplicates(app_opts: App, connection: &sqlite::Connection) -> Result<Vec<File>> {
     index_files(scan(app_opts)?, connection);

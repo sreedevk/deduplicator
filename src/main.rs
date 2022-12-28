@@ -1,6 +1,7 @@
 mod database;
 mod scanner;
 mod cli;
+mod output;
 
 use clap::Parser;
 use anyhow::Result;
@@ -12,7 +13,7 @@ async fn main() -> Result<()> {
     database::setup(&connection)?;
 
     let duplicates = scanner::duplicates(cli::App::parse(), &connection)?;
-    dbg!(duplicates);
+    output::print(duplicates);
 
     Ok(())
 }
