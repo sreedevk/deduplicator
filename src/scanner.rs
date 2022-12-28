@@ -5,6 +5,7 @@ use crate::database;
 use anyhow::Result;
 use glob::glob;
 use std::fs;
+use rayon::prelude::*;
 
 pub fn duplicates(app_opts: App, connection: &sqlite::Connection) -> Result<Vec<File>> {
     index_files(scan(app_opts)?, connection);
@@ -33,12 +34,13 @@ fn scan(app_opts: App) -> Result<Vec<String>> {
         .collect();
 
     let files: Vec<String> = glob_patterns
-        .into_iter()
+        .into_par_iter()
         .map(|glob_pattern| glob(&glob_pattern.as_os_str().to_str().unwrap()))
         .map(|glob_result| glob_result.unwrap())
         .flat_map(|file_vec| {
             file_vec
                 .map(|x| x.unwrap().as_os_str().to_str().unwrap().to_string())
+                .filter(|glob_result| fs::metadata(glob_result).unwrap().is_file() )
                 .collect::<Vec<String>>()
         })
         .collect();
