@@ -8,13 +8,10 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let connection = sqlite::open("/tmp/deduplicator.db").and_then(|conn| {
-        database::setup(&conn).ok();
-        Ok(conn)
-    })?;
+    let app_args = cli::App::parse();
+    let connection = database::get_connection(&app_args)?; 
+    let duplicates = scanner::duplicates(&app_args, &connection)?;
 
-    let duplicates = scanner::duplicates(cli::App::parse(), &connection)?;
     output::print(duplicates);
-
     Ok(())
 }

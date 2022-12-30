@@ -1,9 +1,22 @@
 use anyhow::Result;
+use crate::cli::App;
 
 #[derive(Debug, Clone)]
 pub struct File {
     pub path: String,
     pub hash: String,
+}
+
+pub fn get_connection(args: &App) -> Result<sqlite::Connection, sqlite::Error> {
+    let connection_url = match args.nocache {
+        false => "/tmp/deduplicator.db",
+        true => ":memory:"
+    };
+
+    sqlite::open(connection_url).and_then(|conn| {
+        setup(&conn).ok();
+        Ok(conn)
+    })
 }
 
 pub fn setup(connection: &sqlite::Connection) -> Result<()> {
@@ -33,7 +46,7 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
         .map(|row_result| row_result.unwrap())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
-            let hash = row.read::<&str, _>("hash").to_string();
+            let hash = row.read::<i64, _>("hash").to_string();
             File { path, hash }
         })
     .collect();
@@ -60,7 +73,7 @@ pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Resul
         .map(|row_result| row_result.unwrap())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
-            let hash = row.read::<&str, _>("hash").to_string();
+            let hash = row.read::<i64, _>("hash").to_string();
             File { path, hash }
         })
         .collect();

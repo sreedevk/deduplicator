@@ -12,5 +12,8 @@ pub struct App {
     pub delete: Option<String>,
     /// Run Deduplicator on dir different from pwd
     #[arg(long)]
-    pub dir: Option<PathBuf>
+    pub dir: Option<PathBuf>,
+    /// Don't use cache for indexing files (default = true)
+    #[arg(long, short)]
+    pub nocache: bool
 }

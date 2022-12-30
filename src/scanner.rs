@@ -6,10 +6,11 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use std::fs;
 use std::path::PathBuf;
+use xxhash_rust::xxh3::xxh3_64 as hasher;
 
-pub fn duplicates(app_opts: App, connection: &sqlite::Connection) -> Result<Vec<File>> {
-    let scan_results = scan(&app_opts, connection)?;
-    let base_path = get_directory(&app_opts)?;
+pub fn duplicates(app_opts: &App, connection: &sqlite::Connection) -> Result<Vec<File>> {
+    let scan_results = scan(app_opts, connection)?;
+    let base_path = get_directory(app_opts)?;
 
     index_files(scan_results, connection);
     database::duplicate_hashes(connection, &base_path)
@@ -92,7 +93,7 @@ fn index_files(files: Vec<String>, connection: &sqlite::Connection) {
 
 pub fn hash_file(filepath: &str) -> Result<String> {
     let file = fs::read(filepath)?;
-    let hash = sha256::digest(&*file);
+    let hash = hasher(&*file).to_string();
 
     Ok(hash)
 }
