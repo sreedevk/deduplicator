@@ -13,6 +13,7 @@ Options:
   -t, --types <TYPES>    Filetypes to deduplicate (default = all)
   -d, --delete <DELETE>  Delete files by algorithm (default = oldest) [options = oldest | newest]
       --dir <DIR>        Run Deduplicator on dir different from pwd
+  -n, --nocache          Don't use cache for indexing files (default = true)
   -h, --help             Print help information
   -V, --version          Print version information
 ```
