@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 #[derive(Debug)]
 pub struct File {
@@ -8,10 +8,8 @@ pub struct File {
 
 pub fn setup(connection: &sqlite::Connection) -> Result<()> {
     let query = "CREATE TABLE files (file_identifier STRING, hash STRING)";
-    match connection.execute(query) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(anyhow!("Database Setup Failed! {}", e)),
-    }
+    connection.execute(query).ok();
+    Ok(())
 }
 
 pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
@@ -20,6 +18,25 @@ pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
         file.path, file.hash
     );
     let result = connection.execute(query)?;
+
+    Ok(result)
+}
+
+pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
+    let query = format!(
+        "SELECT * FROM files"
+        );
+
+    let result: Vec<File> = connection
+        .prepare(query)?
+        .into_iter()
+        .map(|row_result| row_result.unwrap())
+        .map(|row| {
+            let path = row.read::<&str, _>("file_identifier").to_string();
+            let hash = row.read::<&str, _>("hash").to_string();
+            File { path, hash }
+        })
+    .collect();
 
     Ok(result)
 }
