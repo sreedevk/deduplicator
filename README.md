@@ -25,8 +25,6 @@ Options:
   <p align="center">
     While testing, Deduplicator was able to go through 8.6GB of pdf files and detect duplicates in 2.9 seconds
   </p>
-  <pre>5.99s user 6.16s system 411% cpu 2.950 total</pre>
-
 <h2 align="center">Screenshots</h2>
 
 ![_039](https://user-images.githubusercontent.com/36154121/210031222-d8b79143-5a1e-47ca-926e-8855d5bbab60.png)
