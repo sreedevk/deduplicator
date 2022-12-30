@@ -76,15 +76,17 @@ fn scan(app_opts: App, connection: &sqlite::Connection) -> Result<Vec<String>> {
 }
 
 fn index_files(files: Vec<String>, connection: &sqlite::Connection) {
-    files
-        .into_iter()
+    let hashed: Vec<File> = files
+        .into_par_iter()
         .map(|file| {
             let hash = hash_file(&file).unwrap();
             database::File { path: file, hash }
         })
-        .for_each(|file| {
-            database::put(&file, connection).unwrap();
-        });
+        .collect();
+
+    hashed.into_iter().for_each(|file| {
+        database::put(&file, connection).unwrap();
+    });
 }
 
 pub fn hash_file(filepath: &str) -> Result<String> {
