@@ -6,10 +6,10 @@ use clap::Parser;
 pub struct App {
     /// Filetypes to deduplicate (default = all)
     #[arg(short, long)]
-    pub filetypes: Option<String>,
-    /// List duplcates without deleting (default = true)
+    pub types: Option<String>,
+    /// Delete files by algorithm (default = oldest) [options = oldest | newest]
     #[arg(short, long)]
-    pub dry: bool,
+    pub delete: Option<String>,
     /// Run Deduplicator on dir different from pwd
     #[arg(long)]
     pub dir: Option<PathBuf>

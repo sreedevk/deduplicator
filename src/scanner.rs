@@ -36,7 +36,7 @@ fn get_directory(opts: &App) -> Result<String> {
 }
 
 fn get_glob_patterns(opts: &App, directory: &String) -> Vec<PathBuf> {
-    opts.filetypes
+    opts.types
         .clone()
         .unwrap_or(String::from("*"))
         .split(",")
