@@ -6,7 +6,7 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use std::fs;
 use std::path::PathBuf;
-use xxhash_rust::xxh3::xxh3_64 as hasher;
+use fxhash::hash32 as hasher;
 
 pub fn duplicates(app_opts: &App, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;

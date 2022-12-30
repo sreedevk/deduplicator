@@ -48,7 +48,7 @@ pub fn print(duplicates: Vec<File>) {
         group.into_iter().for_each(|file| {
             println!(
                 "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
-                &file.hash[0..16].red(),
+                file.hash.red(),
                 format_path(&file.path).yellow(),
                 file_size(&file.path).blue(),
                 modified_time(&file.path).blue()

@@ -67,6 +67,7 @@ pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Resul
             ORDER BY a.file_identifier
         ", path
     );
+
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
