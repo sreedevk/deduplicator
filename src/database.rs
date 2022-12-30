@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct File {
     pub path: String,
     pub hash: String,
@@ -41,7 +41,7 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
     Ok(result)
 }
 
-pub fn duplicate_hashes(connection: &sqlite::Connection) -> Result<Vec<File>> {
+pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Result<Vec<File>> {
     let query = format!(
         " 
             SELECT a.* FROM files a
@@ -50,8 +50,9 @@ pub fn duplicate_hashes(connection: &sqlite::Connection) -> Result<Vec<File>> {
             GROUP BY hash
             HAVING count(*) > 1 ) b
             ON a.hash = b.hash
+            WHERE a.file_identifier LIKE \"{}%\"
             ORDER BY a.file_identifier
-        "
+        ", path
     );
     let result: Vec<File> = connection
         .prepare(query)?

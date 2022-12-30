@@ -1,10 +1,9 @@
 use crate::database::File;
-use itertools::Itertools;
-use colored::Colorize;
-use std::fs;
 use chrono::offset::Utc;
 use chrono::DateTime;
+use colored::Colorize;
 use humansize::{format_size, DECIMAL};
+use std::{collections::HashMap, fs};
 
 fn format_path(path: &String) -> String {
     let stringlen = path.len();
@@ -36,22 +35,25 @@ pub fn print(duplicates: Vec<File>) {
     );
     print_divider();
 
-    duplicates
-        .into_iter()
-        .group_by(|record| record.hash.clone())
-        .into_iter()
-        .for_each(|(_, group)| {
-            group
-                .into_iter()
-                .for_each(|file| {
-                    println!(
-                        "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
-                        &file.hash[0..16].red(),
-                        format_path(&file.path).yellow(),
-                        file_size(&file.path).blue(),
-                        modified_time(&file.path).blue()
-                    );
-                });
-            print_divider();
+    let mut dup_index: HashMap<String, Vec<File>> = HashMap::new();
+
+    duplicates.into_iter().for_each(|file| {
+        dup_index
+            .entry(file.hash.clone())
+            .and_modify(|value| value.push(file.clone()))
+            .or_insert(vec![file]);
+    });
+
+    dup_index.into_iter().for_each(|(_, group)| {
+        group.into_iter().for_each(|file| {
+            println!(
+                "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
+                &file.hash[0..16].red(),
+                format_path(&file.path).yellow(),
+                file_size(&file.path).blue(),
+                modified_time(&file.path).blue()
+            );
         });
+        print_divider();
+    });
 }
