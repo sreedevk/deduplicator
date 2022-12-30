@@ -17,6 +17,15 @@ Options:
   -h, --help             Print help information
   -V, --version          Print version information
 ```
+<h2 align="center">Performance</h2>
+
+<p align="center">
+  Deduplicator uses fxhash (a non-cryptographic hashing algorithm) which is extremely fast. As a result, deduplicator is able to process huge amounts of data in a couple of seconds.</p>
+
+  <p align="center">
+    While testing, Deduplicator was able to go through 8.6GB of pdf files and detect duplicates in 2.9 seconds
+  </p>
+  <pre>5.99s user 6.16s system 411% cpu 2.950 total</pre>
 
 <h2 align="center">Screenshots</h2>
 
