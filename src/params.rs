@@ -5,7 +5,7 @@ use std::fs;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
-pub struct App {
+pub struct Params {
     /// Filetypes to deduplicate (default = all)
     #[arg(short, long)]
     pub types: Option<String>,
@@ -17,7 +17,7 @@ pub struct App {
     pub nocache: bool,
 }
 
-impl App {
+impl Params {
     pub fn get_directory(&self) -> Result<String> {
         let dir_string: String = self
             .dir

@@ -4,9 +4,9 @@ use chrono::DateTime;
 use colored::Colorize;
 use humansize::{format_size, DECIMAL};
 use std::{collections::HashMap, fs};
-use crate::params::App;
+use crate::params::Params;
 
-fn format_path(path: &String, opts: &App) -> String {
+fn format_path(path: &String, opts: &Params) -> String {
     format!("...{}", path.replace(&opts.get_directory().unwrap(), ""))
 }
 
@@ -27,7 +27,7 @@ fn print_divider() {
     println!("-------------------+-------------------------------------+------------------+----------------------------------+");
 }
 
-pub fn print(duplicates: Vec<File>, opts: &App) {
+pub fn print(duplicates: Vec<File>, opts: &Params) {
     print_divider();
     println!(
         "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",

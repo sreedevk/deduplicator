@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crate::params::App;
+use crate::params::Params;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -7,7 +7,7 @@ pub struct File {
     pub hash: String,
 }
 
-pub fn get_connection(args: &App) -> Result<sqlite::Connection, sqlite::Error> {
+pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
     let connection_url = match args.nocache {
         false => "/tmp/deduplicator.db",
         true => ":memory:"

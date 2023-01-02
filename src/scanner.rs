@@ -1,5 +1,5 @@
 use crate::database;
-use crate::{params::App, database::File};
+use crate::{params::Params, database::File};
 use anyhow::Result;
 use glob::glob;
 use itertools::Itertools;
@@ -8,7 +8,7 @@ use std::fs;
 use std::path::PathBuf;
 use fxhash::hash32 as hasher;
 
-pub fn duplicates(app_opts: &App, connection: &sqlite::Connection) -> Result<Vec<File>> {
+pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;
     let base_path = app_opts.get_directory()?;
 
@@ -16,7 +16,7 @@ pub fn duplicates(app_opts: &App, connection: &sqlite::Connection) -> Result<Vec
     database::duplicate_hashes(connection, &base_path)
 }
 
-fn get_glob_patterns(opts: &App, directory: &String) -> Vec<PathBuf> {
+fn get_glob_patterns(opts: &Params, directory: &String) -> Vec<PathBuf> {
     opts.types
         .clone()
         .unwrap_or(String::from("*"))
@@ -37,7 +37,7 @@ fn is_indexed_file(path: &String, indexed: &Vec<File>) -> bool {
         .contains(path)
 }
 
-fn scan(app_opts: &App, connection: &sqlite::Connection) -> Result<Vec<String>> {
+fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String>> {
     let directory = app_opts.get_directory()?;
     let glob_patterns: Vec<PathBuf> = get_glob_patterns(&app_opts, &directory);
     let indexed_paths = database::indexed_paths(connection)?;

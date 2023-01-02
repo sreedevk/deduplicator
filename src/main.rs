@@ -8,7 +8,7 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let app_args = params::App::parse();
+    let app_args = params::Params::parse();
     let connection = database::get_connection(&app_args)?; 
     let duplicates = scanner::duplicates(&app_args, &connection)?;
 
