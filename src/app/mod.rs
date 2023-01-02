@@ -1,17 +1,18 @@
 mod event_handler;
 mod events;
 mod ui;
+mod formatter;
 
 use crate::database;
 use crate::output;
 use crate::params::Params;
 use crate::scanner;
 use anyhow::{anyhow, Result};
-use std::time::Duration;
 use crossterm::{event, execute, terminal};
 use event_handler::EventHandler;
 use std::io;
 use std::thread;
+use std::time::Duration;
 use tui::{
     backend::CrosstermBackend,
     widgets::{Block, Borders, Widget},
@@ -23,12 +24,13 @@ pub struct App;
 
 impl App {
     pub fn init(app_args: &Params) -> Result<()> {
+        // let mut term = Self::init_terminal()?;
+
         let connection = database::get_connection(&app_args)?;
         let duplicates = scanner::duplicates(&app_args, &connection)?;
-        let mut term = Self::init_terminal()?;
 
-        Self::init_render_loop(&mut term)?;
-        Self::cleanup(&mut term)?;
+        // Self::init_render_loop(&mut term)?;
+        // Self::cleanup(&mut term)?;
 
         output::print(duplicates, &app_args); /* TODO: APP TUI INIT FUNCTION */
         Ok(())
