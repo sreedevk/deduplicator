@@ -10,6 +10,7 @@ anyhow = "1.0.68"
 chrono = "0.4.23"
 clap = { version = "4.0.32", features = ["derive"] }
 colored = "2.0.0"
+crossterm = "0.25.0"
 fxhash = "0.2.1"
 glob = "0.3.0"
 humansize = "2.1.2"
@@ -18,3 +19,4 @@ rayon = "1.6.1"
 sqlite = "0.30.3"
 thiserror = "1.0.38"
 tokio = { version = "1.23.0", features = ["full"] }
+tui = "0.19.0"
