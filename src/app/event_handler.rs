@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use crossterm::event::{self, KeyCode, KeyEvent};
 use anyhow::Result;
 use super::events;
@@ -6,9 +8,13 @@ pub struct EventHandler;
 
 impl EventHandler {
     pub fn init() -> Result<events::Event> {
-        match event::read()? {
-            event::Event::Key(keycode) => Self::handle_keypress(keycode),
-            _ => Ok(events::Event::Noop),
+        if crossterm::event::poll(Duration::from_millis(10))? {
+            match event::read()? {
+                event::Event::Key(keycode) => Self::handle_keypress(keycode),
+                _ => Ok(events::Event::Noop),
+            }
+        } else {
+            Ok(events::Event::Noop)
         }
     }
 
