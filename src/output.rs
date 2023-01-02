@@ -4,10 +4,10 @@ use chrono::DateTime;
 use colored::Colorize;
 use humansize::{format_size, DECIMAL};
 use std::{collections::HashMap, fs};
+use crate::params::App;
 
-fn format_path(path: &String) -> String {
-    let stringlen = path.len();
-    format!("...{}", String::from(&path[(stringlen - 32)..]))
+fn format_path(path: &String, opts: &App) -> String {
+    format!("...{}", path.replace(&opts.get_directory().unwrap(), ""))
 }
 
 fn file_size(path: &String) -> String {
@@ -27,7 +27,7 @@ fn print_divider() {
     println!("-------------------+-------------------------------------+------------------+----------------------------------+");
 }
 
-pub fn print(duplicates: Vec<File>) {
+pub fn print(duplicates: Vec<File>, opts: &App) {
     print_divider();
     println!(
         "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
@@ -49,7 +49,7 @@ pub fn print(duplicates: Vec<File>) {
             println!(
                 "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
                 file.hash.red(),
-                format_path(&file.path).yellow(),
+                format_path(&file.path, opts).yellow(),
                 file_size(&file.path).blue(),
                 modified_time(&file.path).blue()
             );

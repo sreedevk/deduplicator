@@ -1,4 +1,4 @@
-mod cli;
+mod params;
 mod database;
 mod output;
 mod scanner;
@@ -8,10 +8,10 @@ use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let app_args = cli::App::parse();
+    let app_args = params::App::parse();
     let connection = database::get_connection(&app_args)?; 
     let duplicates = scanner::duplicates(&app_args, &connection)?;
 
-    output::print(duplicates);
+    output::print(duplicates, &app_args);
     Ok(())
 }
