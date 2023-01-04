@@ -4,6 +4,8 @@
   Find, Sort, Filter & Delete duplicate files 
 </p>
 
+NOTE: This project is still being developed. At the moment, as shown in the screenshot below, deduplicator is able to scan through and list duplicates with and without caching. Contributions are welcome.
+
 <h2 align="center">Usage</h2>
 
 ```bash
