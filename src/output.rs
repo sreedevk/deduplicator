@@ -7,7 +7,14 @@ use std::{collections::HashMap, fs};
 use crate::params::Params;
 
 fn format_path(path: &String, opts: &Params) -> String {
-    format!("...{}", path.replace(&opts.get_directory().unwrap(), ""))
+    let display_path = path.replace(&opts.get_directory().unwrap(), "");
+    let display_range = if display_path.len() > 32 {
+            &display_path[(display_path.len() - 32)..]
+    } else {
+        &display_path[..]
+    };
+    
+    format!("...{}", display_range)
 }
 
 fn file_size(path: &String) -> String {
