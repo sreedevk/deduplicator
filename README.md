@@ -4,9 +4,9 @@
   Find, Sort, Filter & Delete duplicate files 
 </p>
 
-<strong align="center">
+<p align="center">
 NOTE: This project is still being developed. At the moment, as shown in the screenshot below, deduplicator is able to scan through and list duplicates with and without caching. Contributions are welcome.
-</strong>
+</p>
 
 <h2 align="center">Usage</h2>
 
@@ -20,6 +20,18 @@ Options:
   -h, --help           Print help information
   -V, --version        Print version information
 ```
+
+<h2 align="center">Installation</h2>
+
+<p align="center">Currently, deduplicator is only installable via rust's cargo package manager</p>
+
+```
+cargo install deduplicator
+```
+<p align="center">
+  note that if you use a version manager to install rust (like asdf), you need to reshim (`asdf reshim rust`).
+</p>
+
 <h2 align="center">Performance</h2>
 
 <p align="center">
