@@ -8,10 +8,12 @@ use crate::params::Params;
 
 fn format_path(path: &String, opts: &Params) -> String {
     let display_path = path.replace(&opts.get_directory().unwrap(), "");
-    let display_range = if display_path.len() > 32 {
-            &display_path[(display_path.len() - 32)..]
+    let text_vec = display_path.chars().collect::<Vec<_>>();
+
+    let display_range = if text_vec.len() > 32 {
+            text_vec[(display_path.len() - 32)..].into_iter().collect::<String>()
     } else {
-        &display_path[..]
+        display_path
     };
     
     format!("...{}", display_range)
