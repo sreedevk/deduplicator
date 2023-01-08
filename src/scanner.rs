@@ -73,8 +73,8 @@ fn index_files(files: Vec<String>, connection: &sqlite::Connection) -> Result<()
         .collect();
 
     hashed
-        .into_iter()
-        .try_for_each(|file| database::put(&file, connection))
+        .iter()
+        .try_for_each(|file| database::put(file, connection))
 }
 
 pub fn hash_file(filepath: &str) -> Result<String> {
