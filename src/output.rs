@@ -58,8 +58,8 @@ pub fn print(duplicates: Vec<File>, opts: &Params) {
             .or_insert_with(|| vec![file]);
     });
 
-    dup_index.into_iter().for_each(|(_, group)| {
-        group.into_iter().for_each(|file| {
+    dup_index.iter().for_each(|(_, group)| {
+        group.iter().for_each(|file| {
             println!(
                 "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
                 file.hash.red(),
