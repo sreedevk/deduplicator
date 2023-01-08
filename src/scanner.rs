@@ -1,12 +1,12 @@
 use crate::database;
-use crate::{params::Params, database::File};
+use crate::{database::File, params::Params};
 use anyhow::Result;
+use fxhash::hash32 as hasher;
 use glob::glob;
 use itertools::Itertools;
 use rayon::prelude::*;
 use std::fs;
 use std::path::PathBuf;
-use fxhash::hash32 as hasher;
 
 pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;
@@ -16,34 +16,31 @@ pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<
     database::duplicate_hashes(connection, &base_path)
 }
 
-fn get_glob_patterns(opts: &Params, directory: &String) -> Vec<PathBuf> {
+fn get_glob_patterns(opts: &Params, directory: &str) -> Vec<PathBuf> {
     opts.types
         .clone()
-        .unwrap_or(String::from("*"))
-        .split(",")
+        .unwrap_or_else(|| String::from("*"))
+        .split(',')
         .map(|filetype| format!("*.{}", filetype))
         .map(|filetype| {
-            vec![directory.clone(), String::from("**"), filetype]
+            vec![directory.to_owned(), String::from("**"), filetype]
                 .iter()
                 .collect()
         })
         .collect()
 }
 
-fn is_indexed_file(path: &String, indexed: &Vec<File>) -> bool {
-    indexed
-        .into_iter()
-        .map(|file| file.path.clone())
-        .contains(path)
+fn is_indexed_file(path: &String, indexed: &[File]) -> bool {
+    indexed.iter().map(|file| file.path.clone()).contains(path)
 }
 
 fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String>> {
     let directory = app_opts.get_directory()?;
-    let glob_patterns: Vec<PathBuf> = get_glob_patterns(&app_opts, &directory);
+    let glob_patterns: Vec<PathBuf> = get_glob_patterns(app_opts, &directory);
     let indexed_paths = database::indexed_paths(connection)?;
     let files: Vec<String> = glob_patterns
         .into_par_iter()
-        .map(|glob_pattern| glob(&glob_pattern.as_os_str().to_str().unwrap()))
+        .map(|glob_pattern| glob(glob_pattern.as_os_str().to_str().unwrap()))
         .map(|glob_result| glob_result.unwrap())
         .flat_map(|file_vec| {
             file_vec
