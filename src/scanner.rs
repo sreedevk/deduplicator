@@ -1,55 +1,61 @@
-use crate::database;
-use crate::{params::Params, database::File};
+use std::{fs, path::PathBuf};
+
 use anyhow::Result;
+use fxhash::hash32 as hasher;
 use glob::glob;
 use itertools::Itertools;
 use rayon::prelude::*;
-use std::fs;
-use std::path::PathBuf;
-use fxhash::hash32 as hasher;
+
+use crate::{
+    database::{self, File},
+    params::Params,
+};
 
 pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;
     let base_path = app_opts.get_directory()?;
 
-    index_files(scan_results, connection);
+    index_files(scan_results, connection)?;
     database::duplicate_hashes(connection, &base_path)
 }
 
-fn get_glob_patterns(opts: &Params, directory: &String) -> Vec<PathBuf> {
+fn get_glob_patterns(opts: &Params, directory: &str) -> Vec<PathBuf> {
     opts.types
         .clone()
-        .unwrap_or(String::from("*"))
-        .split(",")
+        .unwrap_or_else(|| String::from("*"))
+        .split(',')
         .map(|filetype| format!("*.{}", filetype))
         .map(|filetype| {
-            vec![directory.clone(), String::from("**"), filetype]
+            vec![directory.to_owned(), String::from("**"), filetype]
                 .iter()
                 .collect()
         })
         .collect()
 }
 
-fn is_indexed_file(path: &String, indexed: &Vec<File>) -> bool {
+fn is_indexed_file(path: impl Into<String>, indexed: &[File]) -> bool {
     indexed
-        .into_iter()
+        .iter()
         .map(|file| file.path.clone())
-        .contains(path)
+        .contains(&path.into())
 }
 
 fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String>> {
     let directory = app_opts.get_directory()?;
-    let glob_patterns: Vec<PathBuf> = get_glob_patterns(&app_opts, &directory);
+    let glob_patterns: Vec<PathBuf> = get_glob_patterns(app_opts, &directory);
     let indexed_paths = database::indexed_paths(connection)?;
     let files: Vec<String> = glob_patterns
-        .into_par_iter()
-        .map(|glob_pattern| glob(&glob_pattern.as_os_str().to_str().unwrap()))
-        .map(|glob_result| glob_result.unwrap())
+        .par_iter()
+        .filter_map(|glob_pattern| glob(glob_pattern.as_os_str().to_str()?).ok())
         .flat_map(|file_vec| {
             file_vec
-                .map(|x| x.unwrap().as_os_str().to_str().unwrap().to_string())
+                .filter_map(|x| Some(x.ok()?.as_os_str().to_str()?.to_string()))
                 .filter(|fpath| !is_indexed_file(fpath, &indexed_paths))
-                .filter(|glob_result| fs::metadata(glob_result).unwrap().is_file())
+                .filter(|glob_result| {
+                    fs::metadata(glob_result)
+                        .map(|f| f.is_file())
+                        .unwrap_or(false)
+                })
                 .collect::<Vec<String>>()
         })
         .collect();
@@ -57,18 +63,18 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
     Ok(files)
 }
 
-fn index_files(files: Vec<String>, connection: &sqlite::Connection) {
+fn index_files(files: Vec<String>, connection: &sqlite::Connection) -> Result<()> {
     let hashed: Vec<File> = files
         .into_par_iter()
-        .map(|file| {
-            let hash = hash_file(&file).unwrap();
-            database::File { path: file, hash }
+        .filter_map(|file| {
+            let hash = hash_file(&file).ok()?;
+            Some(database::File { path: file, hash })
         })
         .collect();
 
-    hashed.into_iter().for_each(|file| {
-        database::put(&file, connection).unwrap();
-    });
+    hashed
+        .iter()
+        .try_for_each(|file| database::put(file, connection))
 }
 
 pub fn hash_file(filepath: &str) -> Result<String> {
