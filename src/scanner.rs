@@ -45,7 +45,7 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
     let glob_patterns: Vec<PathBuf> = get_glob_patterns(app_opts, &directory);
     let indexed_paths = database::indexed_paths(connection)?;
     let files: Vec<String> = glob_patterns
-        .into_par_iter()
+        .par_iter()
         .filter_map(|glob_pattern| glob(glob_pattern.as_os_str().to_str()?).ok())
         .flat_map(|file_vec| {
             file_vec
