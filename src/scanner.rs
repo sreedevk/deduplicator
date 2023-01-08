@@ -7,8 +7,10 @@ use glob::glob;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-use crate::database;
-use crate::{database::File, params::Params};
+use crate::{
+    database::{self, File},
+    params::Params,
+};
 
 pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;
