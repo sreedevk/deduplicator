@@ -1,12 +1,14 @@
-use crate::database;
-use crate::{database::File, params::Params};
+use std::fs;
+use std::path::PathBuf;
+
 use anyhow::Result;
 use fxhash::hash32 as hasher;
 use glob::glob;
 use itertools::Itertools;
 use rayon::prelude::*;
-use std::fs;
-use std::path::PathBuf;
+
+use crate::database;
+use crate::{database::File, params::Params};
 
 pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;
