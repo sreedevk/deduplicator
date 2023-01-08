@@ -60,21 +60,12 @@ pub fn print(duplicates: Vec<File>, opts: &Params) {
 
     dup_index.into_iter().for_each(|(_, group)| {
         group.into_iter().for_each(|file| {
-            let Ok(path) = format_path(&file.path, opts) else {
-                return;
-            };
-            let Ok(file_size) = file_size(&file.path) else {
-                return;
-            };
-            let Ok(modified_time) = modified_time(&file.path) else {
-                return;
-            };
             println!(
                 "| {0: <16} | {1: <35} | {2: <16} | {3: <32} |",
                 file.hash.red(),
-                path.yellow(),
-                file_size.blue(),
-                modified_time.blue()
+                format_path(&file.path, opts).unwrap_or_default().yellow(),
+                file_size(&file.path).unwrap_or_default().blue(),
+                modified_time(&file.path).unwrap_or_default().blue()
             );
         });
         print_divider();
