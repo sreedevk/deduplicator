@@ -41,7 +41,7 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
-        .map(|row_result| row_result.unwrap())
+        .filter_map(|row_result| row_result.ok())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
             let hash = row.read::<i64, _>("hash").to_string();
@@ -52,7 +52,7 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
     Ok(result)
 }
 
-pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Result<Vec<File>> {
+pub fn duplicate_hashes(connection: &sqlite::Connection, path: &str) -> Result<Vec<File>> {
     let query = format!(
         " 
             SELECT a.* FROM files a
@@ -70,7 +70,7 @@ pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Resul
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
-        .map(|row_result| row_result.unwrap())
+        .filter_map(|row_result| row_result.ok())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
             let hash = row.read::<i64, _>("hash").to_string();
