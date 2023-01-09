@@ -1,4 +1,4 @@
 pub enum Event {
     Exit,
-    Noop
+    Noop,
 }

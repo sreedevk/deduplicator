@@ -1,6 +1,8 @@
-use crate::params::Params;
-use anyhow::Result;
 use std::env::temp_dir;
+
+use anyhow::Result;
+
+use crate::params::Params;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -21,7 +23,7 @@ fn db_connection_url(args: &Params) -> String {
 pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
     sqlite::open(db_connection_url(args)).and_then(|conn| {
         setup(&conn).ok();
-        Ok(conn)
+        conn
     })
 }
 
@@ -36,18 +38,17 @@ pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
         "INSERT INTO files (file_identifier, hash) VALUES (\"{}\", \"{}\")",
         file.path, file.hash
     );
-    let result = connection.execute(query)?;
-
-    Ok(result)
+    connection.execute(query)?;
+    Ok(())
 }
 
 pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
-    let query = format!("SELECT * FROM files");
+    let query = "SELECT * FROM files";
 
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
-        .map(|row_result| row_result.unwrap())
+        .filter_map(|row_result| row_result.ok())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
             let hash = row.read::<i64, _>("hash").to_string();
@@ -58,12 +59,12 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
     Ok(result)
 }
 
-pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Result<Vec<File>> {
+pub fn duplicate_hashes(connection: &sqlite::Connection, path: &str) -> Result<Vec<File>> {
     let query = format!(
-        " 
+        "
             SELECT a.* FROM files a
             JOIN (SELECT file_identifier, hash, COUNT(*)
-            FROM files 
+            FROM files
             GROUP BY hash
             HAVING count(*) > 1 ) b
             ON a.hash = b.hash
@@ -76,7 +77,7 @@ pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Resul
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
-        .map(|row_result| row_result.unwrap())
+        .filter_map(|row_result| row_result.ok())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
             let hash = row.read::<i64, _>("hash").to_string();
