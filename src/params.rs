@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use clap::Parser;
-use anyhow::Result;
+use anyhow::{ anyhow, Result };
 use std::fs;
 
 #[derive(Parser, Debug)]
@@ -19,20 +19,16 @@ pub struct Params {
 
 impl Params {
     pub fn get_directory(&self) -> Result<String> {
-        let dir_string: String = self
+        let dir_pathbuf: PathBuf = self
             .dir
             .clone()
             .unwrap_or(std::env::current_dir()?)
-            .as_os_str()
-            .to_str()
-            .unwrap()
-            .to_string();
+            .as_os_str().into();
 
-        let dir_pathbuf = PathBuf::from(&dir_string);
-        let dir = fs::canonicalize(&dir_pathbuf)?
+        let dir = fs::canonicalize(dir_pathbuf)?
             .as_os_str()
             .to_str()
-            .unwrap()
+            .ok_or_else(|| anyhow!("Invalid directory"))?
             .to_string();
 
         Ok(dir)
