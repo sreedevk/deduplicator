@@ -1,12 +1,13 @@
-mod params;
+#![allow(unused)] // TODO: remove this once TUI is implemented
+mod app;
 mod database;
 mod output;
+mod params;
 mod scanner;
-mod app;
 
 use anyhow::Result;
-use clap::Parser;
 use app::App;
+use clap::Parser;
 
 #[tokio::main]
 async fn main() -> Result<()> {
