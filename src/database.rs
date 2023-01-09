@@ -1,3 +1,5 @@
+use std::env::temp_dir;
+
 use anyhow::Result;
 
 use crate::params::Params;
@@ -9,8 +11,11 @@ pub struct File {
 }
 
 pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
+    let mut tmp_file = temp_dir();
+    tmp_file.push("deduplicator.db");
+
     let connection_url = match args.nocache {
-        false => "/tmp/deduplicator.db",
+        false => tmp_file.to_str().unwrap(),
         true => ":memory:",
     };
 
