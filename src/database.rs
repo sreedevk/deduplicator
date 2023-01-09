@@ -54,10 +54,10 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
 
 pub fn duplicate_hashes(connection: &sqlite::Connection, path: &str) -> Result<Vec<File>> {
     let query = format!(
-        " 
+        "
             SELECT a.* FROM files a
             JOIN (SELECT file_identifier, hash, COUNT(*)
-            FROM files 
+            FROM files
             GROUP BY hash
             HAVING count(*) > 1 ) b
             ON a.hash = b.hash
