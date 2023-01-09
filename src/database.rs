@@ -1,4 +1,5 @@
 use anyhow::Result;
+
 use crate::params::Params;
 
 #[derive(Debug, Clone)]
@@ -10,12 +11,12 @@ pub struct File {
 pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
     let connection_url = match args.nocache {
         false => "/tmp/deduplicator.db",
-        true => ":memory:"
+        true => ":memory:",
     };
 
-    sqlite::open(connection_url).and_then(|conn| {
+    sqlite::open(connection_url).map(|conn| {
         setup(&conn).ok();
-        Ok(conn)
+        conn
     })
 }
 
@@ -30,15 +31,12 @@ pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
         "INSERT INTO files (file_identifier, hash) VALUES (\"{}\", \"{}\")",
         file.path, file.hash
     );
-    let result = connection.execute(query)?;
-
-    Ok(result)
+    connection.execute(query)?;
+    Ok(())
 }
 
 pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
-    let query = format!(
-        "SELECT * FROM files"
-        );
+    let query = "SELECT * FROM files";
 
     let result: Vec<File> = connection
         .prepare(query)?
@@ -49,7 +47,7 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
             let hash = row.read::<i64, _>("hash").to_string();
             File { path, hash }
         })
-    .collect();
+        .collect();
 
     Ok(result)
 }
@@ -65,7 +63,8 @@ pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Resul
             ON a.hash = b.hash
             WHERE a.file_identifier LIKE \"{}%\"
             ORDER BY a.file_identifier
-        ", path
+        ",
+        path
     );
 
     let result: Vec<File> = connection
