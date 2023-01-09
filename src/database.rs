@@ -1,5 +1,6 @@
-use anyhow::Result;
 use crate::params::Params;
+use anyhow::Result;
+use std::env::temp_dir;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -8,9 +9,12 @@ pub struct File {
 }
 
 pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
+    let mut tmp_file = temp_dir();
+    tmp_file.push("deduplicator.db");
+
     let connection_url = match args.nocache {
-        false => "/tmp/deduplicator.db",
-        true => ":memory:"
+        false => tmp_file.to_str().unwrap(),
+        true => ":memory:",
     };
 
     sqlite::open(connection_url).and_then(|conn| {
@@ -36,9 +40,7 @@ pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
 }
 
 pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
-    let query = format!(
-        "SELECT * FROM files"
-        );
+    let query = format!("SELECT * FROM files");
 
     let result: Vec<File> = connection
         .prepare(query)?
@@ -49,7 +51,7 @@ pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
             let hash = row.read::<i64, _>("hash").to_string();
             File { path, hash }
         })
-    .collect();
+        .collect();
 
     Ok(result)
 }
@@ -65,7 +67,8 @@ pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Resul
             ON a.hash = b.hash
             WHERE a.file_identifier LIKE \"{}%\"
             ORDER BY a.file_identifier
-        ", path
+        ",
+        path
     );
 
     let result: Vec<File> = connection
