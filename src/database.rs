@@ -23,7 +23,7 @@ fn db_connection_url(args: &Params) -> String {
 pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
     sqlite::open(db_connection_url(args)).and_then(|conn| {
         setup(&conn).ok();
-        conn
+        Ok(conn)
     })
 }
 
