@@ -1,7 +1,7 @@
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
+
+use anyhow::{anyhow, Result};
 use clap::Parser;
-use anyhow::{ anyhow, Result };
-use std::fs;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -23,7 +23,8 @@ impl Params {
             .dir
             .clone()
             .unwrap_or(std::env::current_dir()?)
-            .as_os_str().into();
+            .as_os_str()
+            .into();
 
         let dir = fs::canonicalize(dir_pathbuf)?
             .as_os_str()
