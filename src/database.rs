@@ -8,16 +8,18 @@ pub struct File {
     pub hash: String,
 }
 
+fn db_connection_url(args: &Params) -> String {
+    match args.nocache {
+        true => String::from(":memory:"),
+        false => {
+            let temp_dir_path = temp_dir();
+            format!("{}/deduplicator.db", temp_dir_path.display())
+        }
+    }
+}
+
 pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
-    let mut tmp_file = temp_dir();
-    tmp_file.push("deduplicator.db");
-
-    let connection_url = match args.nocache {
-        false => tmp_file.to_str().unwrap(),
-        true => ":memory:",
-    };
-
-    sqlite::open(connection_url).and_then(|conn| {
+    sqlite::open(db_connection_url(args)).and_then(|conn| {
         setup(&conn).ok();
         Ok(conn)
     })
