@@ -1,4 +1,7 @@
+use std::env::temp_dir;
+
 use anyhow::Result;
+
 use crate::params::Params;
 
 #[derive(Debug, Clone)]
@@ -7,13 +10,18 @@ pub struct File {
     pub hash: String,
 }
 
-pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
-    let connection_url = match args.nocache {
-        false => "/tmp/deduplicator.db",
-        true => ":memory:"
-    };
+fn db_connection_url(args: &Params) -> String {
+    match args.nocache {
+        true => String::from(":memory:"),
+        false => {
+            let temp_dir_path = temp_dir();
+            format!("{}/deduplicator.db", temp_dir_path.display())
+        }
+    }
+}
 
-    sqlite::open(connection_url).and_then(|conn| {
+pub fn get_connection(args: &Params) -> Result<sqlite::Connection, sqlite::Error> {
+    sqlite::open(db_connection_url(args)).and_then(|conn| {
         setup(&conn).ok();
         Ok(conn)
     })
@@ -30,48 +38,46 @@ pub fn put(file: &File, connection: &sqlite::Connection) -> Result<()> {
         "INSERT INTO files (file_identifier, hash) VALUES (\"{}\", \"{}\")",
         file.path, file.hash
     );
-    let result = connection.execute(query)?;
-
-    Ok(result)
+    connection.execute(query)?;
+    Ok(())
 }
 
 pub fn indexed_paths(connection: &sqlite::Connection) -> Result<Vec<File>> {
-    let query = format!(
-        "SELECT * FROM files"
-        );
+    let query = "SELECT * FROM files";
 
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
-        .map(|row_result| row_result.unwrap())
+        .filter_map(|row_result| row_result.ok())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
             let hash = row.read::<i64, _>("hash").to_string();
             File { path, hash }
         })
-    .collect();
+        .collect();
 
     Ok(result)
 }
 
-pub fn duplicate_hashes(connection: &sqlite::Connection, path: &String) -> Result<Vec<File>> {
+pub fn duplicate_hashes(connection: &sqlite::Connection, path: &str) -> Result<Vec<File>> {
     let query = format!(
-        " 
+        "
             SELECT a.* FROM files a
             JOIN (SELECT file_identifier, hash, COUNT(*)
-            FROM files 
+            FROM files
             GROUP BY hash
             HAVING count(*) > 1 ) b
             ON a.hash = b.hash
             WHERE a.file_identifier LIKE \"{}%\"
             ORDER BY a.file_identifier
-        ", path
+        ",
+        path
     );
 
     let result: Vec<File> = connection
         .prepare(query)?
         .into_iter()
-        .map(|row_result| row_result.unwrap())
+        .filter_map(|row_result| row_result.ok())
         .map(|row| {
             let path = row.read::<&str, _>("file_identifier").to_string();
             let hash = row.read::<i64, _>("hash").to_string();

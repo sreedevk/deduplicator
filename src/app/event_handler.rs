@@ -1,7 +1,8 @@
 use std::time::Duration;
 
-use crossterm::event::{self, KeyCode, KeyEvent};
 use anyhow::Result;
+use crossterm::event::{self, KeyCode, KeyEvent};
+
 use super::events;
 
 pub struct EventHandler;
@@ -21,8 +22,7 @@ impl EventHandler {
     fn handle_keypress(keyevent: KeyEvent) -> Result<events::Event> {
         match keyevent.code {
             KeyCode::Char('q') => Ok(events::Event::Exit),
-            _ => Ok(events::Event::Noop)
+            _ => Ok(events::Event::Noop),
         }
     }
 }
-

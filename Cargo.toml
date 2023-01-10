@@ -1,10 +1,10 @@
 [package]
 name = "deduplicator"
-version = "0.0.4"
+version = "0.0.6"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 license = "MIT"
-authors = ["Sreedev Kodichath <sreedevpadmakumar@gmail.com>", "Valentin Bersier <vbersier@gmail.com>"]
+authors = ["Sreedev Kodichath <sreedevpadmakumar@gmail.com>", "Valentin Bersier <vbersier@gmail.com>", "Dhruva Sagar <dhruva.sagar@gmail.com>"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,6 +18,7 @@ fxhash = "0.2.1"
 glob = "0.3.0"
 humansize = "2.1.2"
 itertools = "0.10.5"
+prettytable-rs = "0.10.0"
 rayon = "1.6.1"
 sqlite = "0.30.3"
 thiserror = "1.0.38"
