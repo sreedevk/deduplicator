@@ -42,4 +42,7 @@ cargo install deduplicator
   </p>
 <h2 align="center">Screenshots</h2>
 
-![_039](https://user-images.githubusercontent.com/36154121/210031222-d8b79143-5a1e-47ca-926e-8855d5bbab60.png)
+<p align="center">
+  <img align="center" src="https://user-images.githubusercontent.com/36154121/211458077-90092aa3-496c-492f-a061-618059890d5f.png" width="500" height="400" />
+</p>
+
