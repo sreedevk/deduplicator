@@ -1,5 +1,5 @@
 use std::{fs, path::PathBuf};
-
+use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle, ParallelProgressIterator};
 use anyhow::Result;
 use fxhash::hash32 as hasher;
 use glob::glob;
@@ -46,6 +46,7 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
     let indexed_paths = database::indexed_paths(connection)?;
     let files: Vec<String> = glob_patterns
         .par_iter()
+        .progress_with_style(ProgressStyle::with_template("{spinner:.green} [scanning files] [{wide_bar:.cyan/blue}] {pos}/{len} files").unwrap())
         .filter_map(|glob_pattern| glob(glob_pattern.as_os_str().to_str()?).ok())
         .flat_map(|file_vec| {
             file_vec
@@ -66,6 +67,7 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
 fn index_files(files: Vec<String>, connection: &sqlite::Connection) -> Result<()> {
     let hashed: Vec<File> = files
         .into_par_iter()
+        .progress_with_style(ProgressStyle::with_template("{spinner:.green} [indexing files] [{wide_bar:.cyan/blue}] {pos}/{len} files").unwrap())
         .filter_map(|file| {
             let hash = hash_file(&file).ok()?;
             Some(database::File { path: file, hash })
