@@ -17,10 +17,13 @@ fn format_path(path: &str, opts: &Params) -> Result<String> {
     let display_path = path.replace(&opts.get_directory()?, "");
     let text_vec = display_path.chars().collect::<Vec<_>>();
 
-    let display_range = if text_vec.len() > 32 {
-        text_vec[(display_path.len() - 32)..]
+    let display_range = if text_vec.len() < 32 {
+        text_vec
             .iter()
-            .collect::<String>()
+            .rev()
+            .take(32)
+            .rev()
+            .collect()
     } else {
         display_path
     };
