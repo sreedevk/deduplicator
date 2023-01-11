@@ -12,9 +12,12 @@ pub struct Params {
     /// Run Deduplicator on dir different from pwd
     #[arg(long)]
     pub dir: Option<PathBuf>,
-    /// Don't use cache for indexing files (default = true)
+    /// Don't use cache for indexing files (default = false)
     #[arg(long, short)]
     pub nocache: bool,
+    /// Delete files interactively
+    #[arg(long, short)]
+    pub interactive: bool
 }
 
 impl Params {

@@ -1,7 +1,10 @@
+#![allow(unused)]
+
 mod event_handler;
 mod events;
 mod formatter;
 mod ui;
+pub mod file_manager;
 
 use std::{io, thread, time::Duration};
 
@@ -32,7 +35,11 @@ impl App {
         // Self::init_render_loop(&mut term)?;
         // Self::cleanup(&mut term)?;
 
-        output::print(duplicates, app_args); /* TODO: APP TUI INIT FUNCTION */
+        match app_args.interactive {
+            true => output::interactive(duplicates, app_args),
+            false => output::print(duplicates, app_args) /* TODO: APP TUI INIT FUNCTION */
+        }
+        
         Ok(())
     }
 
