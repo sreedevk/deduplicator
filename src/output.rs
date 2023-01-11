@@ -97,11 +97,13 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
         .into_iter()
         .any(|index| index > (duplicates.len() - 1))
     {
-        println!("Err: File Index Out of Bounds!");
+        println!("{}", "Err: File Index Out of Bounds!".red());
         return process_group_action(duplicates, dup_index, dup_size, table);
     }
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+
+    if parsed_file_indices.is_empty() { return }
 
     let files_to_delete = parsed_file_indices
         .into_iter()
