@@ -44,7 +44,7 @@ cargo install deduplicator
 <h2 align="center">Screenshots</h2>
 
 <p align="center>
-<a href="https://asciinema.org/a/oMzGUSlAx32xYXcPBY64uAuLB" target="_blank"><img src="https://asciinema.org/a/oMzGUSlAx32xYXcPBY64uAuLB.svg" /></a>
+<img src="https://user-images.githubusercontent.com/36154121/211948081-63c12b94-6251-487b-a49f-ac5418169d5a.gif" width="500" height="400" />
 </p>
 
 <p align="center">
