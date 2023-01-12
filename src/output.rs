@@ -12,14 +12,16 @@ use crate::app::file_manager;
 use crate::database::File;
 use crate::params::Params;
 use prettytable::{format, row, Cell, Row, Table};
+use unicode_segmentation::UnicodeSegmentation;
 
 fn format_path(path: &str, opts: &Params) -> Result<String> {
     let display_path = path.replace(&opts.get_directory()?, "");
-    let text_vec = display_path.chars().collect::<Vec<_>>();
 
-    let display_range = if text_vec.len() < 32 {
-        text_vec
-            .iter()
+    let display_range = if display_path.chars().count() > 32 {
+        display_path
+            .graphemes(true)
+            .collect::<Vec<&str>>()
+            .into_iter()
             .rev()
             .take(32)
             .rev()
