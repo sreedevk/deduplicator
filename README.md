@@ -38,16 +38,13 @@ cargo install deduplicator
 <p align="center">
   Deduplicator uses fxhash (a non-cryptographic hashing algorithm) which is extremely fast. As a result, deduplicator is able to process huge amounts of data in a couple of seconds.</p>
 
-  <p align="center">
-    While testing, Deduplicator was able to go through 8.6GB of pdf files and detect duplicates in 2.9 seconds
-  </p>
+<p align="center">
+  While testing, Deduplicator was able to go through 8.6GB of pdf files and detect duplicates in 2.9 seconds
+</p>
+
 <h2 align="center">Screenshots</h2>
 
-<p align="center>
-<img src="https://user-images.githubusercontent.com/36154121/211948081-63c12b94-6251-487b-a49f-ac5418169d5a.gif" width="500" height="400" />
-</p>
 
-<p align="center">
-  <img align="center" src="https://user-images.githubusercontent.com/36154121/211458077-90092aa3-496c-492f-a061-618059890d5f.png" width="500" height="400" />
-</p>
+<img src="https://user-images.githubusercontent.com/36154121/211948081-63c12b94-6251-487b-a49f-ac5418169d5a.gif" />
+<img src="https://user-images.githubusercontent.com/36154121/211458077-90092aa3-496c-492f-a061-618059890d5f.png" />
 
