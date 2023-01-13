@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "deduplicator"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -334,6 +334,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tui",
+ "unicode-segmentation",
 ]
 
 [[package]]
