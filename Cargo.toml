@@ -1,6 +1,6 @@
 [package]
 name = "deduplicator"
-version = "0.0.8"
+version = "0.0.9"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 license = "MIT"
@@ -25,3 +25,4 @@ sqlite = "0.30.3"
 thiserror = "1.0.38"
 tokio = { version = "1.23.0", features = ["full"] }
 tui = "0.19.0"
+unicode-segmentation = "1.10.0"
