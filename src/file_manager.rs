@@ -1,6 +1,11 @@
-use crate::database::File;
 use anyhow::Result;
 use colored::Colorize;
+
+#[derive(Debug, Clone)]
+pub struct File {
+    pub path: String,
+    pub hash: String,
+}
 
 pub fn delete_files(files: Vec<File>) -> Result<()> {
     files.into_iter().for_each(|file| {

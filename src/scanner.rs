@@ -1,15 +1,12 @@
-use std::{fs, path::PathBuf};
-use indicatif::{HumanDuration, MultiProgress, ProgressBar, ProgressStyle, ParallelProgressIterator};
 use anyhow::Result;
 use fxhash::hash32 as hasher;
 use glob::glob;
+use indicatif::{ParallelProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use rayon::prelude::*;
+use std::{fs, path::PathBuf};
 
-use crate::{
-    database::{self, File},
-    params::Params,
-};
+use crate::{database, file_manager::File, params::Params};
 
 pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
     let scan_results = scan(app_opts, connection)?;
@@ -46,7 +43,12 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
     let indexed_paths = database::indexed_paths(connection)?;
     let files: Vec<String> = glob_patterns
         .par_iter()
-        .progress_with_style(ProgressStyle::with_template("{spinner:.green} [scanning files] [{wide_bar:.cyan/blue}] {pos}/{len} files").unwrap())
+        .progress_with_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [scanning files] [{wide_bar:.cyan/blue}] {pos}/{len} files",
+            )
+            .unwrap(),
+        )
         .filter_map(|glob_pattern| glob(glob_pattern.as_os_str().to_str()?).ok())
         .flat_map(|file_vec| {
             file_vec
@@ -67,10 +69,15 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
 fn index_files(files: Vec<String>, connection: &sqlite::Connection) -> Result<()> {
     let hashed: Vec<File> = files
         .into_par_iter()
-        .progress_with_style(ProgressStyle::with_template("{spinner:.green} [indexing files] [{wide_bar:.cyan/blue}] {pos}/{len} files").unwrap())
+        .progress_with_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [indexing files] [{wide_bar:.cyan/blue}] {pos}/{len} files",
+            )
+            .unwrap(),
+        )
         .filter_map(|file| {
             let hash = hash_file(&file).ok()?;
-            Some(database::File { path: file, hash })
+            Some(File { path: file, hash })
         })
         .collect();
 

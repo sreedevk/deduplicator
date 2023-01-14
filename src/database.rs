@@ -1,14 +1,7 @@
 use std::env::temp_dir;
-
 use anyhow::Result;
-
 use crate::params::Params;
-
-#[derive(Debug, Clone)]
-pub struct File {
-    pub path: String,
-    pub hash: String,
-}
+use crate::file_manager::File;
 
 fn db_connection_url(args: &Params) -> String {
     match args.nocache {
