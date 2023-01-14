@@ -8,15 +8,14 @@ use colored::Colorize;
 use humansize::{format_size, DECIMAL};
 use itertools::Itertools;
 
-use crate::app::file_manager;
+use crate::file_manager;
 use crate::database::File;
 use crate::params::Params;
-use prettytable::{format, row, Cell, Row, Table};
+use prettytable::{format, row, Table};
 use unicode_segmentation::UnicodeSegmentation;
 
 fn format_path(path: &str, opts: &Params) -> Result<String> {
-    let display_path = path.replace(&opts.get_directory()?, "");
-
+    let display_path  = path.replace(&opts.get_directory()?, "");
     let display_range = if display_path.chars().count() > 32 {
         display_path
             .graphemes(true)

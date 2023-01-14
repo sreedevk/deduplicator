@@ -1,9 +1,9 @@
-#![allow(unused)] // TODO: remove this once TUI is implemented
 mod app;
 mod database;
 mod output;
 mod params;
 mod scanner;
+mod file_manager;
 
 use anyhow::Result;
 use app::App;
