@@ -1,5 +1,4 @@
 use std::{fs, path::PathBuf};
-
 use anyhow::{anyhow, Result};
 use clap::Parser;
 
@@ -17,7 +16,7 @@ pub struct Params {
     pub nocache: bool,
     /// Delete files interactively
     #[arg(long, short)]
-    pub interactive: bool
+    pub interactive: bool,
 }
 
 impl Params {

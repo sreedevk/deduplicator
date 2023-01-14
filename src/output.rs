@@ -1,22 +1,18 @@
-use std::{collections::HashMap, fs, io};
 use std::io::Write;
-
+use std::{collections::HashMap, fs, io};
 use anyhow::Result;
 use chrono::offset::Utc;
 use chrono::DateTime;
 use colored::Colorize;
 use humansize::{format_size, DECIMAL};
 use itertools::Itertools;
-
-use crate::app::file_manager;
-use crate::database::File;
+use crate::file_manager::{self, File};
 use crate::params::Params;
-use prettytable::{format, row, Cell, Row, Table};
+use prettytable::{format, row, Table};
 use unicode_segmentation::UnicodeSegmentation;
 
 fn format_path(path: &str, opts: &Params) -> Result<String> {
     let display_path = path.replace(&opts.get_directory()?, "");
-
     let display_range = if display_path.chars().count() > 32 {
         display_path
             .graphemes(true)
@@ -82,7 +78,7 @@ fn scan_group_confirmation() -> Result<bool> {
 
     match user_input.trim() {
         "Y" | "y" => Ok(true),
-        _ => Ok(false)
+        _ => Ok(false),
     }
 }
 
@@ -108,20 +104,27 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
 
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 
-    if parsed_file_indices.is_empty() { return }
+    if parsed_file_indices.is_empty() {
+        return;
+    }
 
     let files_to_delete = parsed_file_indices
         .into_iter()
         .map(|index| duplicates[index].clone());
 
     println!("\n{}", "The following files will be deleted:".red());
-    files_to_delete.clone().enumerate().for_each(|(index, file)| {
-        println!("{}: {}", index.to_string().blue(), file.path);
-    });
-    
+    files_to_delete
+        .clone()
+        .enumerate()
+        .for_each(|(index, file)| {
+            println!("{}: {}", index.to_string().blue(), file.path);
+        });
+
     match scan_group_confirmation().unwrap() {
-        true => { file_manager::delete_files(files_to_delete.collect_vec()); },
-        false => println!("{}", "\nCancelled Delete Operation.".red())
+        true => {
+            file_manager::delete_files(files_to_delete.collect_vec());
+        }
+        false => println!("{}", "\nCancelled Delete Operation.".red()),
     }
 }
 
@@ -129,21 +132,24 @@ pub fn interactive(duplicates: Vec<File>, opts: &Params) {
     print_meta_info(&duplicates, opts);
     let grouped_duplicates = group_duplicates(duplicates);
 
-    grouped_duplicates.iter().enumerate().for_each(|(gindex, (hash, group))| {
-        let mut itable = Table::new();
-        itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-        itable.set_titles(row!["index", "filename", "size", "updated_at"]);
-        group.iter().enumerate().for_each(|(index, file)| {
-            itable.add_row(row![
-                index,
-                format_path(&file.path, opts).unwrap_or_default().blue(),
-                file_size(&file.path).unwrap_or_default().red(),
-                modified_time(&file.path).unwrap_or_default().yellow()
-            ]);
-        });
+    grouped_duplicates
+        .iter()
+        .enumerate()
+        .for_each(|(gindex, (hash, group))| {
+            let mut itable = Table::new();
+            itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+            itable.set_titles(row!["index", "filename", "size", "updated_at"]);
+            group.iter().enumerate().for_each(|(index, file)| {
+                itable.add_row(row![
+                    index,
+                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    file_size(&file.path).unwrap_or_default().red(),
+                    modified_time(&file.path).unwrap_or_default().yellow()
+                ]);
+            });
 
-        process_group_action(group, gindex, grouped_duplicates.len(), itable);
-    });
+            process_group_action(group, gindex, grouped_duplicates.len(), itable);
+        });
 }
 
 pub fn print(duplicates: Vec<File>, opts: &Params) {
