@@ -14,9 +14,24 @@ pub struct Params {
     /// Delete files interactively
     #[arg(long, short)]
     pub interactive: bool,
+    /// Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T). [default = 0]
+    #[arg(long, short)]
+    pub minsize: Option<String>,
 }
 
 impl Params {
+    pub fn get_minsize(&self) -> Option<u64> {
+        match &self.minsize {
+            Some(msize) => {
+                match msize.parse::<bytesize::ByteSize>() {
+                    Ok(units) => Some(units.0),
+                    Err(_) => None
+                }
+            },
+            None => None
+        }
+    }
+
     pub fn get_directory(&self) -> Result<String> {
         let dir_pathbuf: PathBuf = self
             .dir

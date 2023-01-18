@@ -3,6 +3,7 @@ mod file_manager;
 mod output;
 mod params;
 mod scanner;
+mod filters;
 
 use anyhow::Result;
 use app::App;
