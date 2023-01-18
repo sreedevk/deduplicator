@@ -22,7 +22,6 @@ itertools = "0.10.5"
 memmap2 = "0.5.8"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
-sqlite = "0.30.3"
 thiserror = "1.0.38"
 tokio = { version = "1.23.0", features = ["full"] }
 unicode-segmentation = "1.10.0"
