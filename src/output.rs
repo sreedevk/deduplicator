@@ -145,18 +145,31 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 
     let mut output_table = Table::new();
     output_table.set_titles(row!["hash", "duplicates"]);
-    duplicates.into_iter().for_each(|(hash, group)| {
-        let mut inner_table = Table::new();
-        inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-        group.iter().for_each(|file| {
-            inner_table.add_row(row![
-                format_path(&file.path, opts).unwrap_or_default().blue(),
-                file_size(&file.path).unwrap_or_default().red(),
-                modified_time(&file.path).unwrap_or_default().yellow()
-            ]);
+    duplicates
+        .into_iter()
+        .map(|f| {
+            // we extract the file size of the first file in the group
+            let size =
+                f.1.first()
+                    .and_then(|ff| Some(&ff.path))
+                    .and_then(|p| fs::metadata(p).ok())
+                    .and_then(|m| Some(m.len()));
+            (f.0, f.1, size)
+        })
+        .sorted_unstable_by_key(|f| f.2) // sort by ascending size
+        .for_each(|(hash, group, size)| {
+            let mut inner_table = Table::new();
+            inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+            group.iter().for_each(|file| {
+                inner_table.add_row(row![
+                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    // since all files should logically have the same size,
+                    // we can print the pre-computed size of the first element in the group
+                    format!("{:>12}", format_size(size.unwrap_or_default(), DECIMAL)).red(),
+                    modified_time(&file.path).unwrap_or_default().yellow()
+                ]);
+            });
+            output_table.add_row(row![hash.green(), inner_table]);
         });
-        output_table.add_row(row![hash.green(), inner_table]);
-    });
-
     output_table.printstd();
 }
