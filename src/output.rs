@@ -130,7 +130,7 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
         .into_iter()
         .sorted_unstable_by_key(|f| {
             -(f.1.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
-        })
+        }) // sort by descending file size in interactive mode
         .enumerate()
         .for_each(|(gindex, (_, group))| {
             let mut itable = Table::new();
