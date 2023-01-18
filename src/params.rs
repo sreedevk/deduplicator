@@ -1,7 +1,6 @@
-use std::{fs, path::PathBuf};
-
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use std::{fs, path::PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -12,12 +11,9 @@ pub struct Params {
     /// Run Deduplicator on dir different from pwd
     #[arg(long)]
     pub dir: Option<PathBuf>,
-    /// Don't use cache for indexing files (default = false)
-    #[arg(long, short)]
-    pub nocache: bool,
     /// Delete files interactively
     #[arg(long, short)]
-    pub interactive: bool
+    pub interactive: bool,
 }
 
 impl Params {
@@ -36,5 +32,19 @@ impl Params {
             .to_string();
 
         Ok(dir)
+    }
+
+    pub fn get_glob_patterns(&self) -> Vec<PathBuf> {
+        self.types
+            .clone()
+            .unwrap_or_else(|| String::from("*"))
+            .split(',')
+            .map(|filetype| format!("*.{}", filetype))
+            .map(|filetype| {
+                vec![self.get_directory().unwrap(), String::from("**"), filetype]
+                    .iter()
+                    .collect()
+            })
+            .collect()
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "deduplicator"
-version = "0.0.9"
+version = "0.1.1"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 license = "MIT"
@@ -13,16 +13,15 @@ anyhow = "1.0.68"
 chrono = "0.4.23"
 clap = { version = "4.0.32", features = ["derive"] }
 colored = "2.0.0"
-crossterm = "0.25.0"
+dashmap = { version = "5.4.0", features = ["rayon"] }
 fxhash = "0.2.1"
 glob = "0.3.0"
 humansize = "2.1.2"
 indicatif = { version = "0.17.2", features = ["rayon", "tokio"] }
 itertools = "0.10.5"
+memmap2 = "0.5.8"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
-sqlite = "0.30.3"
 thiserror = "1.0.38"
 tokio = { version = "1.23.0", features = ["full"] }
-tui = "0.19.0"
 unicode-segmentation = "1.10.0"

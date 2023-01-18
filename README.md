@@ -16,7 +16,6 @@ Usage: deduplicator [OPTIONS]
 Options:
   -t, --types <TYPES>  Filetypes to deduplicate (default = all)
       --dir <DIR>      Run Deduplicator on dir different from pwd
-  -n, --nocache        Don't use cache for indexing files (default = false)
   -i, --interactive    Delete files interactively
   -h, --help           Print help information
   -V, --version        Print version information

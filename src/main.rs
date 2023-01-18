@@ -1,6 +1,5 @@
-#![allow(unused)] // TODO: remove this once TUI is implemented
 mod app;
-mod database;
+mod file_manager;
 mod output;
 mod params;
 mod scanner;
