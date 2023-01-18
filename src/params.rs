@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use clap::Parser;
+use clap::{Parser, ValueHint};
 use std::{fs, path::PathBuf};
 
 #[derive(Parser, Debug)]
@@ -9,7 +9,7 @@ pub struct Params {
     #[arg(short, long)]
     pub types: Option<String>,
     /// Run Deduplicator on dir different from pwd
-    #[arg(long)]
+    #[arg(long, value_hint = ValueHint::DirPath)]
     pub dir: Option<PathBuf>,
     /// Delete files interactively
     #[arg(long, short)]
@@ -22,13 +22,11 @@ pub struct Params {
 impl Params {
     pub fn get_minsize(&self) -> Option<u64> {
         match &self.minsize {
-            Some(msize) => {
-                match msize.parse::<bytesize::ByteSize>() {
-                    Ok(units) => Some(units.0),
-                    Err(_) => None
-                }
+            Some(msize) => match msize.parse::<bytesize::ByteSize>() {
+                Ok(units) => Some(units.0),
+                Err(_) => None,
             },
-            None => None
+            None => None,
         }
     }
 
