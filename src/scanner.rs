@@ -28,12 +28,7 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
         .collect::<Vec<File>>();
 
     if sizewize_duplicate_files.len() > 1 {
-        let size_wise_duplicate_paths = sizewize_duplicate_files
-            .into_par_iter()
-            .map(|file| file.path)
-            .collect::<Vec<String>>();
-
-        let hash_index_store = index_files(size_wise_duplicate_paths, IndexCritera::Hash)?;
+        let hash_index_store = index_files(sizewize_duplicate_files, IndexCritera::Hash)?;
         let duplicate_files = hash_index_store
             .into_par_iter()
             .filter(|(_, files)| files.len() > 1)
@@ -45,9 +40,9 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
     }
 }
 
-fn scan(app_opts: &Params) -> Result<Vec<String>> {
+fn scan(app_opts: &Params) -> Result<Vec<File>> {
     let glob_patterns: Vec<PathBuf> = app_opts.get_glob_patterns();
-    let files: Vec<String> = glob_patterns
+    let files: Vec<File> = glob_patterns
         .par_iter()
         .progress_with_style(ProgressStyle::with_template(
             "{spinner:.green} [scanning files] [{wide_bar:.cyan/blue}] {pos}/{len} files",
@@ -63,17 +58,10 @@ fn scan(app_opts: &Params) -> Result<Vec<String>> {
                 })
                 .collect::<Vec<String>>()
         })
+        .map(|file_path| File { path: file_path.clone(), hash: None, size: Some(fs::metadata(file_path).unwrap().len()) })
         .collect();
 
     Ok(files)
-}
-
-fn process_file_size_index(fpath: String) -> Result<File> {
-    Ok(File {
-        path: fpath.clone(),
-        size: Some(fs::metadata(fpath)?.len()),
-        hash: None,
-    })
 }
 
 fn process_file_hash_index(fpath: String) -> Result<File> {
@@ -85,20 +73,19 @@ fn process_file_hash_index(fpath: String) -> Result<File> {
 }
 
 fn process_file_index(
-    fpath: String,
+    file: File,
     store: &DashMap<String, Vec<File>>,
     index_criteria: IndexCritera,
 ) {
     match index_criteria {
         IndexCritera::Size => {
-            let processed_file = process_file_size_index(fpath).unwrap();
             store
-                .entry(processed_file.size.unwrap_or_default().to_string())
-                .and_modify(|fileset| fileset.push(processed_file.clone()))
-                .or_insert_with(|| vec![processed_file]);
+                .entry(file.size.unwrap_or_default().to_string())
+                .and_modify(|fileset| fileset.push(file.clone()))
+                .or_insert_with(|| vec![file]);
         }
         IndexCritera::Hash => {
-            let processed_file = process_file_hash_index(fpath).unwrap();
+            let processed_file = process_file_hash_index(file.path).unwrap();
             let indexhash = processed_file.clone().hash.unwrap_or_default();
 
             store
@@ -110,7 +97,7 @@ fn process_file_index(
 }
 
 fn index_files(
-    files: Vec<String>,
+    files: Vec<File>,
     index_criteria: IndexCritera,
 ) -> Result<DashMap<String, Vec<File>>> {
     let store: DashMap<String, Vec<File>> = DashMap::new();
@@ -124,7 +111,7 @@ fn index_files(
     Ok(store)
 }
 
-pub fn incremental_hashing(filepath: &str) -> Result<String> {
+fn incremental_hashing(filepath: &str) -> Result<String> {
     let file = fs::File::open(filepath)?;
     let fmap = unsafe { Mmap::map(&file)? };
     let mut inchasher = fxhash::FxHasher::default();
@@ -135,12 +122,12 @@ pub fn incremental_hashing(filepath: &str) -> Result<String> {
     Ok(format!("{}", inchasher.finish()))
 }
 
-pub fn standard_hashing(filepath: &str) -> Result<String> {
+fn standard_hashing(filepath: &str) -> Result<String> {
     let file = fs::read(filepath)?;
     Ok(hasher(&*file).to_string())
 }
 
-pub fn hash_file(filepath: &str) -> Result<String> {
+fn hash_file(filepath: &str) -> Result<String> {
     let filemeta = fs::metadata(filepath)?;
 
     // NOTE: USE INCREMENTAL HASHING ONLY FOR FILES > 100MB
