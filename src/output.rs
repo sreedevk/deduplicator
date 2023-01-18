@@ -128,6 +128,9 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     duplicates
         .clone()
         .into_iter()
+        .sorted_unstable_by_key(|f| {
+            -(f.1.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
+        }) // sort by descending file size in interactive mode
         .enumerate()
         .for_each(|(gindex, (_, group))| {
             let mut itable = Table::new();
@@ -159,18 +162,21 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 
     let mut output_table = Table::new();
     output_table.set_titles(row!["hash", "duplicates"]);
-    duplicates.into_iter().for_each(|(hash, group)| {
-        let mut inner_table = Table::new();
-        inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-        group.iter().for_each(|file| {
-            inner_table.add_row(row![
-                format_path(&file.path, opts).unwrap_or_default().blue(),
-                file_size(&file).unwrap_or_default().red(),
-                modified_time(&file.path).unwrap_or_default().yellow()
-            ]);
+    duplicates
+        .into_iter()
+        .sorted_unstable_by_key(|f| f.1.first().and_then(|ff| ff.size).unwrap_or_default()) // sort by ascending size
+        .for_each(|(hash, group)| {
+            let mut inner_table = Table::new();
+            inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+            group.iter().for_each(|file| {
+                inner_table.add_row(row![
+                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    file_size(&file).unwrap_or_default().red(),
+                    modified_time(&file.path).unwrap_or_default().yellow()
+                ]);
+            });
+            output_table.add_row(row![hash.green(), inner_table]);
         });
-        output_table.add_row(row![hash.green(), inner_table]);
-    });
 
     output_table.printstd();
 }
