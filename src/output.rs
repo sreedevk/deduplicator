@@ -128,6 +128,9 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     duplicates
         .clone()
         .into_iter()
+        .sorted_unstable_by_key(|f| {
+            -(f.1.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
+        })
         .enumerate()
         .for_each(|(gindex, (_, group))| {
             let mut itable = Table::new();
