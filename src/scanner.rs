@@ -1,46 +1,31 @@
 use anyhow::Result;
-use fxhash::hash32 as hasher;
+use fxhash::hash64 as hasher;
 use glob::glob;
 use indicatif::{ParallelProgressIterator, ProgressStyle};
-use itertools::Itertools;
 use rayon::prelude::*;
+use std::hash::Hasher;
 use std::{fs, path::PathBuf};
+use memmap2::Mmap;
+use dashmap::DashMap;
 
-use crate::{database, file_manager::File, params::Params};
+use crate::{file_manager::File, params::Params};
 
-pub fn duplicates(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<File>> {
-    let scan_results = scan(app_opts, connection)?;
-    let base_path = app_opts.get_directory()?;
+pub fn duplicates(app_opts: &Params) -> Result<Vec<File>> {
+    let scan_results = scan(app_opts)?;
+    let index_store = index_files(scan_results)?;
 
-    index_files(scan_results, connection)?;
-    database::duplicate_hashes(connection, &base_path)
+    let duplicate_files = index_store
+        .into_par_iter()
+        .filter(|(_, files)| files.len() > 1)
+        .map(|(_, files)| files )
+        .flatten()
+        .collect::<Vec<File>>();
+
+    Ok(duplicate_files)
 }
 
-fn get_glob_patterns(opts: &Params, directory: &str) -> Vec<PathBuf> {
-    opts.types
-        .clone()
-        .unwrap_or_else(|| String::from("*"))
-        .split(',')
-        .map(|filetype| format!("*.{}", filetype))
-        .map(|filetype| {
-            vec![directory.to_owned(), String::from("**"), filetype]
-                .iter()
-                .collect()
-        })
-        .collect()
-}
-
-fn is_indexed_file(path: impl Into<String>, indexed: &[File]) -> bool {
-    indexed
-        .iter()
-        .map(|file| file.path.clone())
-        .contains(&path.into())
-}
-
-fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String>> {
-    let directory = app_opts.get_directory()?;
-    let glob_patterns: Vec<PathBuf> = get_glob_patterns(app_opts, &directory);
-    let indexed_paths = database::indexed_paths(connection)?;
+fn scan(app_opts: &Params) -> Result<Vec<String>> {
+    let glob_patterns: Vec<PathBuf> = app_opts.get_glob_patterns();
     let files: Vec<String> = glob_patterns
         .par_iter()
         .progress_with_style(
@@ -53,7 +38,6 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
         .flat_map(|file_vec| {
             file_vec
                 .filter_map(|x| Some(x.ok()?.as_os_str().to_str()?.to_string()))
-                .filter(|fpath| !is_indexed_file(fpath, &indexed_paths))
                 .filter(|glob_result| {
                     fs::metadata(glob_result)
                         .map(|f| f.is_file())
@@ -66,29 +50,49 @@ fn scan(app_opts: &Params, connection: &sqlite::Connection) -> Result<Vec<String
     Ok(files)
 }
 
-fn index_files(files: Vec<String>, connection: &sqlite::Connection) -> Result<()> {
-    let hashed: Vec<File> = files
+fn index_files(files: Vec<String>) -> Result<DashMap<String, Vec<File>>> {
+    let store: DashMap<String, Vec<File>> = DashMap::new();
+    files
         .into_par_iter()
         .progress_with_style(
             ProgressStyle::with_template(
                 "{spinner:.green} [indexing files] [{wide_bar:.cyan/blue}] {pos}/{len} files",
-            )
-            .unwrap(),
+            )?,
         )
-        .filter_map(|file| {
-            let hash = hash_file(&file).ok()?;
-            Some(File { path: file, hash })
-        })
-        .collect();
+        .for_each(|file| {
+            let hash = hash_file(&file).unwrap_or_default();
+            let fobj = File { path: file, hash: hash.clone() };
+            store
+                .entry(hash)
+                .and_modify(|fileset| fileset.push(fobj.clone()) )
+                .or_insert_with(|| vec![fobj]);
+        });
 
-    hashed
-        .iter()
-        .try_for_each(|file| database::put(file, connection))
+        Ok(store)
+}
+
+pub fn incremental_hashing(filepath: &str) -> Result<String> {
+    let file = fs::File::open(filepath)?;
+    let fmap = unsafe { Mmap::map(&file)? };
+    let mut inchasher = fxhash::FxHasher::default();
+
+    fmap
+        .chunks(1_000)
+        .for_each(|kilo| { inchasher.write(kilo) });
+
+    Ok(format!("{}", inchasher.finish()))
+}
+
+pub fn standard_hashing(filepath: &str) -> Result<String> {
+    let file = fs::read(filepath)?;
+    Ok(hasher(&*file).to_string())
 }
 
 pub fn hash_file(filepath: &str) -> Result<String> {
-    let file = fs::read(filepath)?;
-    let hash = hasher(&*file).to_string();
+    let filemeta = fs::metadata(filepath)?;
 
-    Ok(hash)
+    match filemeta.len() < 1_000_000 {
+        true => standard_hashing(filepath),
+        false => incremental_hashing(filepath)
+    }
 }
