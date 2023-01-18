@@ -116,6 +116,15 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
 
 pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     print_meta_info();
+
+    if duplicates.is_empty() {
+        println!(
+            "\n{}",
+            "No duplicates found matching your search criteria.".green()
+        );
+        return;
+    }
+
     duplicates
         .clone()
         .into_iter()
@@ -139,6 +148,14 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 
 pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     print_meta_info();
+
+    if duplicates.is_empty() {
+        println!(
+            "\n{}",
+            "No duplicates found matching your search criteria.".green()
+        );
+        return;
+    }
 
     let mut output_table = Table::new();
     output_table.set_titles(row!["hash", "duplicates"]);
