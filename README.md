@@ -14,11 +14,12 @@ NOTE: This project is still being developed. At the moment, as shown in the scre
 Usage: deduplicator [OPTIONS]
 
 Options:
-  -t, --types <TYPES>  Filetypes to deduplicate (default = all)
-      --dir <DIR>      Run Deduplicator on dir different from pwd
-  -i, --interactive    Delete files interactively
-  -h, --help           Print help information
-  -V, --version        Print version information
+  -t, --types <TYPES>      Filetypes to deduplicate (default = all)
+      --dir <DIR>          Run Deduplicator on dir different from pwd
+  -i, --interactive        Delete files interactively
+  -m, --minsize <MINSIZE>  Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T). [default = 0]
+  -h, --help               Print help information
+  -V, --version            Print version information
 ```
 
 <h2 align="center">Installation</h2>
