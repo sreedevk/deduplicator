@@ -60,7 +60,7 @@ fn scan_group_instruction() -> Result<String> {
 }
 
 fn scan_group_confirmation() -> Result<bool> {
-    print!("\nconfirm? [Y/n]: ");
+    print!("\nconfirm? [y/N]: ");
     std::io::stdout().flush()?;
     let mut user_input = String::new();
     io::stdin().read_line(&mut user_input)?;
