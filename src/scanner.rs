@@ -1,3 +1,4 @@
+use crate::{file_manager::File, filters, params::Params};
 use anyhow::Result;
 use dashmap::DashMap;
 use fxhash::hash64 as hasher;
@@ -7,8 +8,6 @@ use memmap2::Mmap;
 use rayon::prelude::*;
 use std::hash::Hasher;
 use std::{fs, path::PathBuf};
-
-use crate::{file_manager::File, params::Params};
 
 #[derive(Clone, Copy)]
 enum IndexCritera {
@@ -58,17 +57,22 @@ fn scan(app_opts: &Params) -> Result<Vec<File>> {
                 })
                 .collect::<Vec<String>>()
         })
-        .map(|file_path| File { path: file_path.clone(), hash: None, size: Some(fs::metadata(file_path).unwrap().len()) })
+        .map(|file_path| File {
+            path: file_path.clone(),
+            hash: None,
+            size: Some(fs::metadata(file_path).unwrap().len()),
+        })
+        .filter(|file| filters::is_file_gt_minsize(app_opts, file))
         .collect();
 
     Ok(files)
 }
 
-fn process_file_hash_index(fpath: String) -> Result<File> {
+fn process_file_hash_index(file: &File) -> Result<File> {
     Ok(File {
-        path: fpath.clone(),
-        size: None,
-        hash: Some(hash_file(&fpath).unwrap_or_default()),
+        path: file.path.clone(),
+        size: file.size,
+        hash: Some(hash_file(&file.path).unwrap_or_default()),
     })
 }
 
@@ -85,7 +89,7 @@ fn process_file_index(
                 .or_insert_with(|| vec![file]);
         }
         IndexCritera::Hash => {
-            let processed_file = process_file_hash_index(file.path).unwrap();
+            let processed_file = process_file_hash_index(&file).unwrap();
             let indexhash = processed_file.clone().hash.unwrap_or_default();
 
             store
