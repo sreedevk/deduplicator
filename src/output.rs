@@ -151,8 +151,7 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
             // we extract the file size of the first file in the group
             let size =
                 f.1.first()
-                    .and_then(|ff| Some(&ff.path))
-                    .and_then(|p| fs::metadata(p).ok())
+                    .and_then(|ff| fs::metadata(&ff.path).ok())
                     .and_then(|m| Some(m.len()));
             (f.0, f.1, size)
         })
