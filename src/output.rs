@@ -5,7 +5,6 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use colored::Colorize;
 use dashmap::DashMap;
-use humansize::{format_size, DECIMAL};
 use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
@@ -30,10 +29,8 @@ fn format_path(path: &str, opts: &Params) -> Result<String> {
     Ok(format!("...{:<32}", display_range))
 }
 
-fn file_size(path: &String) -> Result<String> {
-    let mdata = fs::metadata(path)?;
-    let formatted_size = format!("{:>12}", format_size(mdata.len(), DECIMAL));
-    Ok(formatted_size)
+fn file_size(file: &File) -> Result<String> {
+    Ok(format!("{:>12}", bytesize::ByteSize::b(file.size.unwrap())))
 }
 
 fn modified_time(path: &String) -> Result<String> {
@@ -119,9 +116,21 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
 
 pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     print_meta_info();
+
+    if duplicates.is_empty() {
+        println!(
+            "\n{}",
+            "No duplicates found matching your search criteria.".green()
+        );
+        return;
+    }
+
     duplicates
         .clone()
         .into_iter()
+        .sorted_unstable_by_key(|f| {
+            -(f.1.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
+        }) // sort by descending file size in interactive mode
         .enumerate()
         .for_each(|(gindex, (_, group))| {
             let mut itable = Table::new();
@@ -131,7 +140,7 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
                 itable.add_row(row![
                     index,
                     format_path(&file.path, opts).unwrap_or_default().blue(),
-                    file_size(&file.path).unwrap_or_default().red(),
+                    file_size(&file).unwrap_or_default().red(),
                     modified_time(&file.path).unwrap_or_default().yellow()
                 ]);
             });
@@ -143,20 +152,31 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     print_meta_info();
 
+    if duplicates.is_empty() {
+        println!(
+            "\n{}",
+            "No duplicates found matching your search criteria.".green()
+        );
+        return;
+    }
+
     let mut output_table = Table::new();
     output_table.set_titles(row!["hash", "duplicates"]);
-    duplicates.into_iter().for_each(|(hash, group)| {
-        let mut inner_table = Table::new();
-        inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-        group.iter().for_each(|file| {
-            inner_table.add_row(row![
-                format_path(&file.path, opts).unwrap_or_default().blue(),
-                file_size(&file.path).unwrap_or_default().red(),
-                modified_time(&file.path).unwrap_or_default().yellow()
-            ]);
+    duplicates
+        .into_iter()
+        .sorted_unstable_by_key(|f| f.1.first().and_then(|ff| ff.size).unwrap_or_default()) // sort by ascending size
+        .for_each(|(hash, group)| {
+            let mut inner_table = Table::new();
+            inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+            group.iter().for_each(|file| {
+                inner_table.add_row(row![
+                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    file_size(&file).unwrap_or_default().red(),
+                    modified_time(&file.path).unwrap_or_default().yellow()
+                ]);
+            });
+            output_table.add_row(row![hash.green(), inner_table]);
         });
-        output_table.add_row(row![hash.green(), inner_table]);
-    });
 
     output_table.printstd();
 }
