@@ -26,7 +26,9 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
         .flatten()
         .collect::<Vec<File>>();
 
-    if sizewize_duplicate_files.len() > 1 {
+    if sizewize_duplicate_files.is_empty() {
+        Ok(DashMap::new())
+    } else {
         let hash_index_store = index_files(sizewize_duplicate_files, IndexCritera::Hash)?;
         let duplicate_files = hash_index_store
             .into_par_iter()
@@ -34,8 +36,6 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
             .collect();
 
         Ok(duplicate_files)
-    } else {
-        Ok(DashMap::new())
     }
 }
 
@@ -138,5 +138,43 @@ fn hash_file(filepath: &str) -> Result<String> {
     match filemeta.len() < 100_000_000 {
         true => standard_hashing(filepath),
         false => incremental_hashing(filepath),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_index_by_size() {
+        let files_to_index: Vec<File> = vec![
+            File {
+                path: "tf1.jpg".to_string(),
+                size: Some(100_123),
+                hash: None,
+            },
+            File {
+                path: "tf2.png".to_string(),
+                size: Some(100_123),
+                hash: None,
+            },
+            File {
+                path: "tf3.mp4".to_string(),
+                size: Some(100_000_000),
+                hash: None,
+            },
+        ];
+
+        let duplicates_by_size = index_files(files_to_index, IndexCritera::Size).unwrap();
+        let duplicate_paths = duplicates_by_size.view("100123", |_, value| {
+            value
+                .iter()
+                .map(|f| f.clone().path)
+                .collect::<Vec<String>>()
+        }).unwrap();
+        assert_eq!(duplicates_by_size.len(), 2);
+        assert!(duplicates_by_size.contains_key("100123"));
+        assert!(duplicate_paths.contains(&"tf1.jpg".to_string()));
+        assert!(duplicate_paths.contains(&"tf2.png".to_string()));
     }
 }
