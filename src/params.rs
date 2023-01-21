@@ -33,8 +33,8 @@ impl Params {
     pub fn get_directory(&self) -> Result<String> {
         let dir_pathbuf: PathBuf = self
             .dir
-            .clone()
-            .unwrap_or(std::env::current_dir()?)
+            .as_ref()
+            .unwrap_or(&std::env::current_dir()?)
             .as_os_str()
             .into();
 
@@ -47,17 +47,18 @@ impl Params {
         Ok(dir)
     }
 
-    pub fn get_glob_patterns(&self) -> Vec<PathBuf> {
-        self.types
-            .clone()
-            .unwrap_or_else(|| String::from("*"))
-            .split(',')
-            .map(|filetype| format!("*.{}", filetype))
-            .map(|filetype| {
-                vec![self.get_directory().unwrap(), String::from("**"), filetype]
-                    .iter()
-                    .collect()
-            })
-            .collect()
+    pub fn get_glob_patterns(&self) -> PathBuf {
+        match self.types.as_ref() {
+            Some(filetypes) => vec![
+                self.get_directory().unwrap(),
+                String::from("**"),
+                format!("{{{}}}", filetypes),
+            ]
+            .iter()
+            .collect::<PathBuf>(),
+            None => vec![self.get_directory().unwrap().as_str(), "**", "*"]
+                .iter()
+                .collect::<PathBuf>(),
+        }
     }
 }
