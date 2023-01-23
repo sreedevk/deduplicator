@@ -40,10 +40,6 @@ fn modified_time(path: &String) -> Result<String> {
     Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
 }
 
-fn print_meta_info() {
-    println!("Deduplicator v{}", std::env!("CARGO_PKG_VERSION"));
-}
-
 fn scan_group_instruction() -> Result<String> {
     println!("\nEnter the indices of the files you want to delete.");
     println!("You can enter multiple files using commas to seperate file indices.");
@@ -115,8 +111,6 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
 }
 
 pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
-    print_meta_info();
-
     if duplicates.is_empty() {
         println!(
             "\n{}",
@@ -128,8 +122,8 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     duplicates
         .clone()
         .into_iter()
-        .sorted_unstable_by_key(|f| {
-            -(f.1.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
+        .sorted_unstable_by_key(|(_, f)| {
+            -(f.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
         }) // sort by descending file size in interactive mode
         .enumerate()
         .for_each(|(gindex, (_, group))| {
@@ -140,7 +134,7 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
                 itable.add_row(row![
                     index,
                     format_path(&file.path, opts).unwrap_or_default().blue(),
-                    file_size(&file).unwrap_or_default().red(),
+                    file_size(file).unwrap_or_default().red(),
                     modified_time(&file.path).unwrap_or_default().yellow()
                 ]);
             });
@@ -150,8 +144,6 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 }
 
 pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
-    print_meta_info();
-
     if duplicates.is_empty() {
         println!(
             "\n{}",
@@ -164,14 +156,14 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     output_table.set_titles(row!["hash", "duplicates"]);
     duplicates
         .into_iter()
-        .sorted_unstable_by_key(|f| f.1.first().and_then(|ff| ff.size).unwrap_or_default()) // sort by ascending size
+        .sorted_unstable_by_key(|(_, f)| f.first().and_then(|ff| ff.size).unwrap_or_default())
         .for_each(|(hash, group)| {
             let mut inner_table = Table::new();
             inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
             group.iter().for_each(|file| {
                 inner_table.add_row(row![
                     format_path(&file.path, opts).unwrap_or_default().blue(),
-                    file_size(&file).unwrap_or_default().red(),
+                    file_size(file).unwrap_or_default().red(),
                     modified_time(&file.path).unwrap_or_default().yellow()
                 ]);
             });

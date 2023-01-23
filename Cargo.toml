@@ -1,6 +1,6 @@
 [package]
 name = "deduplicator"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 license = "MIT"
@@ -23,5 +23,5 @@ memmap2 = "0.5.8"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
 thiserror = "1.0.38"
-tokio = { version = "1.23.0", features = ["full"] }
+tokio = { version = "1.23.1", features = ["full"] }
 unicode-segmentation = "1.10.0"

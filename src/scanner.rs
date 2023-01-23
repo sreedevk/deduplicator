@@ -40,27 +40,22 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
 }
 
 fn scan(app_opts: &Params) -> Result<Vec<File>> {
-    let glob_patterns: Vec<PathBuf> = app_opts.get_glob_patterns();
-    let files: Vec<File> = glob_patterns
-        .par_iter()
+    let glob_patterns = app_opts.get_glob_patterns().display().to_string();
+    let glob_iter = glob(&glob_patterns)?;
+    let files = glob_iter
+        .filter(Result::is_ok)
+        .map(|file| file.unwrap())
+        .filter(|fpath| fpath.is_file())
+        .collect::<Vec<PathBuf>>()
+        .into_par_iter()
         .progress_with_style(ProgressStyle::with_template(
-            "{spinner:.green} [scanning files] [{wide_bar:.cyan/blue}] {pos}/{len} files",
+            "{spinner:.green} [processing scan results] [{wide_bar:.cyan/blue}] {pos}/{len} files",
         )?)
-        .filter_map(|glob_pattern| glob(glob_pattern.as_os_str().to_str()?).ok())
-        .flat_map(|file_vec| {
-            file_vec
-                .filter_map(|x| Some(x.ok()?.as_os_str().to_str()?.to_string()))
-                .filter(|glob_result| {
-                    fs::metadata(glob_result)
-                        .map(|f| f.is_file())
-                        .unwrap_or(false)
-                })
-                .collect::<Vec<String>>()
-        })
-        .map(|file_path| File {
-            path: file_path.clone(),
+        .map(|fpath| fpath.display().to_string())
+        .map(|fpath| File {
+            path: fpath.clone(),
             hash: None,
-            size: Some(fs::metadata(file_path).unwrap().len()),
+            size: Some(fs::metadata(fpath).unwrap().len()),
         })
         .filter(|file| filters::is_file_gt_minsize(app_opts, file))
         .collect();
@@ -68,16 +63,8 @@ fn scan(app_opts: &Params) -> Result<Vec<File>> {
     Ok(files)
 }
 
-fn process_file_hash_index(file: &File) -> Result<File> {
-    Ok(File {
-        path: file.path.clone(),
-        size: file.size,
-        hash: Some(hash_file(&file.path).unwrap_or_default()),
-    })
-}
-
 fn process_file_index(
-    file: File,
+    mut file: File,
     store: &DashMap<String, Vec<File>>,
     index_criteria: IndexCritera,
 ) {
@@ -89,13 +76,11 @@ fn process_file_index(
                 .or_insert_with(|| vec![file]);
         }
         IndexCritera::Hash => {
-            let processed_file = process_file_hash_index(&file).unwrap();
-            let indexhash = processed_file.clone().hash.unwrap_or_default();
-
+            file.hash = Some(hash_file(&file.path).unwrap_or_default());
             store
-                .entry(indexhash)
-                .and_modify(|fileset| fileset.push(processed_file.clone()))
-                .or_insert_with(|| vec![processed_file]);
+                .entry(file.clone().hash.unwrap())
+                .and_modify(|fileset| fileset.push(file.clone()))
+                .or_insert_with(|| vec![file]);
         }
     }
 }
