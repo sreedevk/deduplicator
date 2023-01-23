@@ -1,10 +1,14 @@
 [package]
 name = "deduplicator"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 license = "MIT"
-authors = ["Sreedev Kodichath <sreedevpadmakumar@gmail.com>", "Valentin Bersier <vbersier@gmail.com>", "Dhruva Sagar <dhruva.sagar@gmail.com>"]
+authors = [
+    "Sreedev Kodichath <sreedevpadmakumar@gmail.com>",
+    "Valentin Bersier <vbersier@gmail.com>",
+    "Dhruva Sagar <dhruva.sagar@gmail.com>",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -16,7 +20,7 @@ clap = { version = "4.0.32", features = ["derive"] }
 colored = "2.0.0"
 dashmap = { version = "5.4.0", features = ["rayon"] }
 fxhash = "0.2.1"
-glob = "0.3.0"
+globwalk = "0.8.1"
 indicatif = { version = "0.17.2", features = ["rayon", "tokio"] }
 itertools = "0.10.5"
 memmap2 = "0.5.8"

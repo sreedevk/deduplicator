@@ -1,6 +1,8 @@
+use std::{fs, path::PathBuf};
+
 use anyhow::{anyhow, Result};
 use clap::{Parser, ValueHint};
-use std::{fs, path::PathBuf};
+use globwalk::{GlobWalker, GlobWalkerBuilder};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -30,35 +32,21 @@ impl Params {
         }
     }
 
-    pub fn get_directory(&self) -> Result<String> {
-        let dir_pathbuf: PathBuf = self
-            .dir
-            .as_ref()
-            .unwrap_or(&std::env::current_dir()?)
-            .as_os_str()
-            .into();
-
-        let dir = fs::canonicalize(dir_pathbuf)?
-            .as_os_str()
-            .to_str()
-            .ok_or_else(|| anyhow!("Invalid directory"))?
-            .to_string();
-
+    pub fn get_directory(&self) -> Result<PathBuf> {
+        let current_dir = std::env::current_dir()?;
+        let dir_path = self.dir.as_ref().unwrap_or(&current_dir).as_path();
+        let dir = fs::canonicalize(dir_path)?;
         Ok(dir)
     }
 
-    pub fn get_glob_patterns(&self) -> PathBuf {
-        match self.types.as_ref() {
-            Some(filetypes) => vec![
-                self.get_directory().unwrap(),
-                String::from("**"),
-                format!("{{{}}}", filetypes),
-            ]
-            .iter()
-            .collect::<PathBuf>(),
-            None => vec![self.get_directory().unwrap().as_str(), "**", "*"]
-                .iter()
-                .collect::<PathBuf>(),
-        }
+    pub fn get_glob_walker(&self) -> Result<GlobWalker> {
+        let pattern: String = match self.types.as_ref() {
+            Some(filetypes) => format!("**/*{{{filetypes}}}"),
+            None => "**/*".to_string(),
+        };
+        // TODO: add params for maximum depth and following symlinks, then pass them to this builder
+        GlobWalkerBuilder::from_patterns(self.get_directory()?, &[pattern])
+            .build()
+            .map_err(|e| anyhow!(e))
     }
 }
