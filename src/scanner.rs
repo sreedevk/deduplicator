@@ -2,10 +2,11 @@ use crate::{file_manager::File, filters, params::Params};
 use anyhow::Result;
 use dashmap::DashMap;
 use fxhash::hash64 as hasher;
-use indicatif::{ParallelProgressIterator, ProgressStyle};
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressIterator, ProgressStyle};
 use memmap2::Mmap;
 use rayon::prelude::*;
 use std::hash::Hasher;
+use std::time::Duration;
 use std::{fs, path::PathBuf};
 
 #[derive(Clone, Copy)]
@@ -40,14 +41,21 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
 
 fn scan(app_opts: &Params) -> Result<Vec<File>> {
     let walker = app_opts.get_glob_walker()?;
+    let progress = ProgressBar::new_spinner();
+    let progress_style =
+        ProgressStyle::with_template("{spinner:.green} [mapping paths] {pos} paths")?;
+    progress.set_style(progress_style);
+    progress.enable_steady_tick(Duration::from_millis(100));
+
     let files = walker
+        .progress_with(progress)
         .filter_map(Result::ok)
         .map(|file| file.into_path())
         .filter(|fpath| fpath.is_file())
         .collect::<Vec<PathBuf>>()
         .into_par_iter()
         .progress_with_style(ProgressStyle::with_template(
-            "{spinner:.green} [processing scan results] [{wide_bar:.cyan/blue}] {pos}/{len} files",
+            "{spinner:.green} [processing mapped paths] [{wide_bar:.cyan/blue}] {pos}/{len} files",
         )?)
         .map(|fpath| fpath.display().to_string())
         .map(|fpath| File {
