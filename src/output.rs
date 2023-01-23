@@ -12,7 +12,7 @@ use std::{fs, io};
 use unicode_segmentation::UnicodeSegmentation;
 
 fn format_path(path: &str, opts: &Params) -> Result<String> {
-    let display_path = path.replace(&opts.get_directory()?, "");
+    let display_path = path.replace(opts.get_directory()?.to_string_lossy().as_ref(), "");
     let display_range = if display_path.chars().count() > 32 {
         display_path
             .graphemes(true)
