@@ -5,6 +5,7 @@ use chrono::offset::Utc;
 use chrono::DateTime;
 use colored::Colorize;
 use dashmap::DashMap;
+use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
@@ -153,10 +154,18 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     }
 
     let mut output_table = Table::new();
+    let progress_bar = ProgressBar::new(duplicates.len() as u64);
+    let progress_style = ProgressStyle::default_bar()
+        .template("{spinner:.green} [generating output] [{wide_bar:.cyan/blue}] {pos}/{len} files")
+        .unwrap();
+
+    progress_bar.set_style(progress_style);
     output_table.set_titles(row!["hash", "duplicates"]);
+
     duplicates
         .into_iter()
         .sorted_unstable_by_key(|(_, f)| f.first().and_then(|ff| ff.size).unwrap_or_default())
+        .progress_with(progress_bar)
         .for_each(|(hash, group)| {
             let mut inner_table = Table::new();
             inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
