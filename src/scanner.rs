@@ -39,9 +39,8 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
 }
 
 fn scan(app_opts: &Params) -> Result<Vec<File>> {
-    let glob_patterns = app_opts.get_glob_patterns().display().to_string();
-    let glob_iter = globwalk::glob(glob_patterns)?;
-    let files = glob_iter
+    let walker = app_opts.get_glob_walker()?;
+    let files = walker
         .filter_map(Result::ok)
         .map(|file| file.into_path())
         .filter(|fpath| fpath.is_file())
