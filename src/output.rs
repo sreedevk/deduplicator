@@ -26,7 +26,7 @@ fn format_path(path: &str, opts: &Params) -> Result<String> {
         display_path
     };
 
-    Ok(format!("...{:<32}", display_range))
+    Ok(format!("...{display_range:<32}"))
 }
 
 fn file_size(file: &File) -> Result<String> {
