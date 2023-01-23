@@ -2,7 +2,6 @@ use crate::{file_manager::File, filters, params::Params};
 use anyhow::Result;
 use dashmap::DashMap;
 use fxhash::hash64 as hasher;
-use glob::glob;
 use indicatif::{ParallelProgressIterator, ProgressStyle};
 use memmap2::Mmap;
 use rayon::prelude::*;
@@ -41,10 +40,10 @@ pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
 
 fn scan(app_opts: &Params) -> Result<Vec<File>> {
     let glob_patterns = app_opts.get_glob_patterns().display().to_string();
-    let glob_iter = glob(&glob_patterns)?;
+    let glob_iter = globwalk::glob(glob_patterns)?;
     let files = glob_iter
-        .filter(Result::is_ok)
-        .map(|file| file.unwrap())
+        .filter_map(Result::ok)
+        .map(|file| file.into_path())
         .filter(|fpath| fpath.is_file())
         .collect::<Vec<PathBuf>>()
         .into_par_iter()

@@ -52,7 +52,7 @@ impl Params {
             Some(filetypes) => vec![
                 self.get_directory().unwrap(),
                 String::from("**"),
-                format!("{{{}}}", filetypes),
+                format!("*.{{{filetypes}}}"),
             ]
             .iter()
             .collect::<PathBuf>(),
