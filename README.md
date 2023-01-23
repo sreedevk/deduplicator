@@ -48,7 +48,7 @@ $ tar -zxvf deduplicator-x86_64-unknown-linux-gnu.tar.gz
 $ sudo mv deduplicator /usr/bin/
 ```
 
-### Mac OS
+### Mac OS (Pre-built Binary)
 
 you can download the pre-build binary from the [Releases](https://github.com/sreedevk/deduplicator/releases) page.
 download the `deduplicator-x86_64-apple-darwin.tar.gz` tarball for mac os. Once you have the tarball file with the executable, you can follow these steps to install:
@@ -58,10 +58,12 @@ $ tar -zxvf deduplicator-x86_64-unknown-linux-gnu.tar.gz
 $ sudo mv deduplicator /usr/bin/
 ```
 
-### Windows
+### Windows (Pre-built Binary)
 
 you can download the pre-build binary from the [Releases](https://github.com/sreedevk/deduplicator/releases) page.
 download the `deduplicator-x86_64-pc-windows-msvc.zip` zip file for windows. unzip the `zip`  file & move the `deduplicator.exe` to a location in the PATH system environment variable.
+
+Note: If you Run into an msvc error, please install MSCV from [here](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
 
 ## Performance
 
