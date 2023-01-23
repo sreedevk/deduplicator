@@ -67,7 +67,33 @@ Note: If you Run into an msvc error, please install MSCV from [here](https://lea
 
 ## Performance
 
-Deduplicator uses size comparison and fxhash (a non non-cryptographic hashing algo) to quickly scan through large number of files to find duplicates. its also highly parallel (uses rayon and dashmap). I haven't uploaded the benchmarks yet, but I was able to scan through 120GB of files (Videos, PDFs, Images) in ~300ms.
+Deduplicator uses size comparison and fxhash (a non non-cryptographic hashing algo) to quickly scan through large number of files to find duplicates. its also highly parallel (uses rayon and dashmap). I was able to scan through 120GB of files (Videos, PDFs, Images) in ~300ms. checkout the benchmarks
+
+## benchmarks
+
+| Command | Dirsize | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|:---|---:|---:|---:|---:|
+| `deduplicator --dir ~/Data/tmp` | (~120G) | 27.5 ± 1.0 | 26.0 | 32.1 | 1.70 ± 0.09 |
+| `deduplicator --dir ~/Data/books` | (~8.6G) | 21.8 ± 0.7 | 20.5 | 24.4 | 1.35 ± 0.07 |
+| `deduplicator --dir ~/Data/books --minsize 10M` | (~8.6G) | 16.1 ± 0.6 | 14.9 | 18.8 | 1.00 |
+| `deduplicator --dir ~/Data/ --types pdf,jpg,png,jpeg` | (~290G) | 1857.4 ± 24.5 | 1817.0 | 1895.5 | 115.07 ± 4.64 |
+
+* The last entry is lower because of the number of files deduplicator had to go through (~660895 Files). The average size of the files rarely affect the performance of deduplicator.
+
+These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine). Here are the specs of the machine used to benchmark deduplicator:
+
+```
+OS: Arch Linux x86_64 
+Host: Precision 5540
+Kernel: 5.15.89-1-lts 
+Uptime: 4 hours, 44 mins 
+Shell: zsh 5.9                        
+Terminal: kitty 
+CPU: Intel i9-9880H (16) @ 4.800GHz 
+GPU: NVIDIA Quadro T2000 Mobile / Max-Q 
+GPU: Intel CoffeeLake-H GT2 [UHD Graphics 630] 
+Memory: 31731MiB (~32GiB)
+```
 
 ## Screenshots
 
