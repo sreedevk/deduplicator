@@ -63,7 +63,7 @@ fn scan(app_opts: &Params) -> Result<Vec<File>> {
             hash: None,
             size: Some(fs::metadata(fpath).unwrap().len()),
         })
-        .filter(|file| filters::is_file_gt_minsize(app_opts, file))
+        .filter(|file| filters::is_file_gt_min_size(app_opts, file))
         .collect();
 
     Ok(files)
