@@ -7,16 +7,18 @@
 ## Usage
 
 ```bash
-Usage: deduplicator [OPTIONS]
+Usage: deduplicator [OPTIONS] [scan_dir_path]
+
+Arguments:
+  [scan_dir_path]  Run Deduplicator on dir different from pwd (e.g., ~/Pictures )
 
 Options:
   -t, --types <TYPES>          Filetypes to deduplicate [default = all]
-      --dir <DIR>              Run Deduplicator on dir different from pwd
   -i, --interactive            Delete files interactively
-      --min-size <MIN_SIZE>    Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
+  -s, --min-size <MIN_SIZE>    Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
   -d, --max-depth <MAX_DEPTH>  Max Depth to scan while looking for duplicates
       --min-depth <MIN_DEPTH>  Min Depth to scan while looking for duplicates
-      --follow-links           Follow links while scanning directories
+  -f, --follow-links           Follow links while scanning directories
   -h, --help                   Print help information
   -V, --version                Print version information
 ```
