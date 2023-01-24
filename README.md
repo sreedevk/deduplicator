@@ -22,6 +22,24 @@ Options:
   -h, --help                   Print help information
   -V, --version                Print version information
 ```
+### Examples
+
+```bash
+# Scan for duplicates recursively from the current dir, only look for png, jpg & pdf file types & interactively delete files
+deduplicator -t pdf,jpg,png -i
+
+# Scan for duplicates recursively from the ~/Pictures dir, only look for png, jpeg, jpg & pdf file types & interactively delete files
+deduplicator ~/Pictures/ -t png,jpeg,jpg,pdf -i
+
+# Scan for duplicates in the ~/Pictures without recursing into subdirectories
+deduplicator ~/Pictures --max-depth 0
+
+# look for duplicates in the ~/.config directory while also recursing into symbolic link paths
+deduplicator ~/.config --follow-links
+
+# scan for duplicates that are greater than 100mb in the ~/Media directory
+deduplicator ~/Media --min-size 100mb
+```
 
 ## Installation
 
