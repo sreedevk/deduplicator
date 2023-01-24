@@ -10,8 +10,8 @@ pub struct Params {
     /// Filetypes to deduplicate [default = all]
     #[arg(short, long)]
     pub types: Option<String>,
-    /// Run Deduplicator on dir different from pwd
-    #[arg(long, value_hint = ValueHint::DirPath)]
+    /// Run Deduplicator on dir different from pwd (e.g., ~/Pictures )
+    #[arg(value_hint = ValueHint::DirPath, value_name = "scan_dir_path")]
     pub dir: Option<PathBuf>,
     /// Delete files interactively
     #[arg(long, short)]
