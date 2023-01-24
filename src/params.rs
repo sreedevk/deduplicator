@@ -17,7 +17,7 @@ pub struct Params {
     #[arg(long, short)]
     pub interactive: bool,
     /// Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T).
-    #[arg(long, default_value = "1b")]
+    #[arg(long, short = 's', default_value = "1b")]
     pub min_size: Option<String>,
     /// Max Depth to scan while looking for duplicates
     #[arg(long, short = 'd')]
@@ -26,7 +26,7 @@ pub struct Params {
     #[arg(long)]
     pub min_depth: Option<usize>,
     /// Follow links while scanning directories
-    #[arg(long)]
+    #[arg(long, short)]
     pub follow_links: bool,
 }
 
