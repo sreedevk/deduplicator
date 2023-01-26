@@ -7,15 +7,38 @@
 ## Usage
 
 ```bash
-Usage: deduplicator [OPTIONS]
+Usage: deduplicator [OPTIONS] [scan_dir_path]
+
+Arguments:
+  [scan_dir_path]  Run Deduplicator on dir different from pwd (e.g., ~/Pictures )
 
 Options:
-  -t, --types <TYPES>      Filetypes to deduplicate (default = all)
-      --dir <DIR>          Run Deduplicator on dir different from pwd
-  -i, --interactive        Delete files interactively
-  -m, --minsize <MINSIZE>  Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T). [default = 0]
-  -h, --help               Print help information
-  -V, --version            Print version information
+  -t, --types <TYPES>          Filetypes to deduplicate [default = all]
+  -i, --interactive            Delete files interactively
+  -s, --min-size <MIN_SIZE>    Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
+  -d, --max-depth <MAX_DEPTH>  Max Depth to scan while looking for duplicates
+      --min-depth <MIN_DEPTH>  Min Depth to scan while looking for duplicates
+  -f, --follow-links           Follow links while scanning directories
+  -h, --help                   Print help information
+  -V, --version                Print version information
+```
+### Examples
+
+```bash
+# Scan for duplicates recursively from the current dir, only look for png, jpg & pdf file types & interactively delete files
+deduplicator -t pdf,jpg,png -i
+
+# Scan for duplicates recursively from the ~/Pictures dir, only look for png, jpeg, jpg & pdf file types & interactively delete files
+deduplicator ~/Pictures/ -t png,jpeg,jpg,pdf -i
+
+# Scan for duplicates in the ~/Pictures without recursing into subdirectories
+deduplicator ~/Pictures --max-depth 0
+
+# look for duplicates in the ~/.config directory while also recursing into symbolic link paths
+deduplicator ~/.config --follow-links
+
+# scan for duplicates that are greater than 100mb in the ~/Media directory
+deduplicator ~/Media --min-size 100mb
 ```
 
 ## Installation
@@ -75,7 +98,7 @@ Deduplicator uses size comparison and fxhash (a non non-cryptographic hashing al
 |:---|:---|---:|---:|---:|---:|
 | `deduplicator --dir ~/Data/tmp` | (~120G) | 27.5 ± 1.0 | 26.0 | 32.1 | 1.70 ± 0.09 |
 | `deduplicator --dir ~/Data/books` | (~8.6G) | 21.8 ± 0.7 | 20.5 | 24.4 | 1.35 ± 0.07 |
-| `deduplicator --dir ~/Data/books --minsize 10M` | (~8.6G) | 16.1 ± 0.6 | 14.9 | 18.8 | 1.00 |
+| `deduplicator --dir ~/Data/books --min-size 10M` | (~8.6G) | 16.1 ± 0.6 | 14.9 | 18.8 | 1.00 |
 | `deduplicator --dir ~/Data/ --types pdf,jpg,png,jpeg` | (~290G) | 1857.4 ± 24.5 | 1817.0 | 1895.5 | 115.07 ± 4.64 |
 
 * The last entry is lower because of the number of files deduplicator had to go through (~660895 Files). The average size of the files rarely affect the performance of deduplicator.
