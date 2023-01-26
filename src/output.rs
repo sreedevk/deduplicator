@@ -6,12 +6,12 @@ use chrono::DateTime;
 use colored::Colorize;
 use dashmap::DashMap;
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
-use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
 use std::path::Path;
 use std::{fs, io};
 use unicode_segmentation::UnicodeSegmentation;
+use itertools::Itertools;
 
 fn format_path(path: &Path, opts: &Params) -> Result<String> {
     let display_path = path
@@ -77,7 +77,7 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
         .split(',')
         .filter(|element| !element.is_empty())
         .map(|index| index.parse::<usize>().unwrap_or_default())
-        .collect_vec();
+        .collect::<Vec<usize>>();
 
     if parsed_file_indices
         .clone()
@@ -108,7 +108,7 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
 
     match scan_group_confirmation().unwrap() {
         true => {
-            file_manager::delete_files(files_to_delete.collect_vec()).ok();
+            file_manager::delete_files(files_to_delete.collect::<Vec<File>>()).ok();
         }
         false => println!("{}", "\nCancelled Delete Operation.".red()),
     }

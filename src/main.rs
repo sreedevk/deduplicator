@@ -9,7 +9,6 @@ use anyhow::Result;
 use app::App;
 use clap::Parser;
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     App::init(&params::Params::parse())
 }

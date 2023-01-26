@@ -21,11 +21,9 @@ colored = "2.0.0"
 dashmap = { version = "5.4.0", features = ["rayon"] }
 fxhash = "0.2.1"
 globwalk = "0.8.1"
-indicatif = { version = "0.17.2", features = ["rayon", "tokio"] }
+indicatif = { version = "0.17.2", features = ["rayon"] }
 itertools = "0.10.5"
 memmap2 = "0.5.8"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
-thiserror = "1.0.38"
-tokio = { version = "1.23.1", features = ["full"] }
 unicode-segmentation = "1.10.0"
