@@ -61,7 +61,11 @@ fn scan(app_opts: &Params) -> Result<Vec<File>> {
         .map(|fpath| File {
             path: fpath.clone(),
             hash: None,
-            size: Some(fs::metadata(fpath).unwrap().len()),
+            size: Some(
+                fs::metadata(fpath)
+                    .map(|metadata| metadata.len())
+                    .unwrap_or_default(),
+            ),
         })
         .filter(|file| filters::is_file_gt_min_size(app_opts, file))
         .collect();
@@ -84,7 +88,7 @@ fn process_file_index(
         IndexCritera::Hash => {
             file.hash = Some(hash_file(&file.path).unwrap_or_default());
             store
-                .entry(file.clone().hash.unwrap())
+                .entry(file.clone().hash.unwrap_or_default())
                 .and_modify(|fileset| fileset.push(file.clone()))
                 .or_insert_with(|| vec![file]);
         }
