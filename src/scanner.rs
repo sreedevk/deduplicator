@@ -7,7 +7,10 @@ use memmap2::Mmap;
 use rayon::prelude::*;
 use std::hash::Hasher;
 use std::time::Duration;
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Clone, Copy)]
 enum IndexCritera {
@@ -57,7 +60,6 @@ fn scan(app_opts: &Params) -> Result<Vec<File>> {
         .progress_with_style(ProgressStyle::with_template(
             "{spinner:.green} [processing mapped paths] [{wide_bar:.cyan/blue}] {pos}/{len} files",
         )?)
-        .map(|fpath| fpath.display().to_string())
         .map(|fpath| File {
             path: fpath.clone(),
             hash: None,
@@ -110,7 +112,7 @@ fn index_files(
     Ok(store)
 }
 
-fn incremental_hashing(filepath: &str) -> Result<String> {
+fn incremental_hashing(filepath: &Path) -> Result<String> {
     let file = fs::File::open(filepath)?;
     let fmap = unsafe { Mmap::map(&file)? };
     let mut inchasher = fxhash::FxHasher::default();
@@ -121,12 +123,12 @@ fn incremental_hashing(filepath: &str) -> Result<String> {
     Ok(format!("{}", inchasher.finish()))
 }
 
-fn standard_hashing(filepath: &str) -> Result<String> {
+fn standard_hashing(filepath: &Path) -> Result<String> {
     let file = fs::read(filepath)?;
     Ok(hasher(&*file).to_string())
 }
 
-fn hash_file(filepath: &str) -> Result<String> {
+fn hash_file(filepath: &Path) -> Result<String> {
     let filemeta = fs::metadata(filepath)?;
 
     // NOTE: USE INCREMENTAL HASHING ONLY FOR FILES > 100MB

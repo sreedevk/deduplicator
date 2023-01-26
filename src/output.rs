@@ -9,11 +9,14 @@ use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
+use std::path::Path;
 use std::{fs, io};
 use unicode_segmentation::UnicodeSegmentation;
 
-fn format_path(path: &str, opts: &Params) -> Result<String> {
-    let display_path = path.replace(opts.get_directory()?.to_string_lossy().as_ref(), "");
+fn format_path(path: &Path, opts: &Params) -> Result<String> {
+    let display_path = path
+        .to_string_lossy()
+        .replace(opts.get_directory()?.to_string_lossy().as_ref(), "");
     let display_range = if display_path.chars().count() > 32 {
         display_path
             .graphemes(true)
@@ -34,7 +37,7 @@ fn file_size(file: &File) -> Result<String> {
     Ok(format!("{:>12}", bytesize::ByteSize::b(file.size.unwrap())))
 }
 
-fn modified_time(path: &String) -> Result<String> {
+fn modified_time(path: &Path) -> Result<String> {
     let mdata = fs::metadata(path)?;
     let modified_time: DateTime<Utc> = mdata.modified()?.into();
 
@@ -100,7 +103,7 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
         .clone()
         .enumerate()
         .for_each(|(index, file)| {
-            println!("{}: {}", index.to_string().blue(), file.path);
+            println!("{}: {}", index.to_string().blue(), file.path.display());
         });
 
     match scan_group_confirmation().unwrap() {
