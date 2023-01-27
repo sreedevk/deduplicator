@@ -96,10 +96,10 @@ Deduplicator uses size comparison and fxhash (a non non-cryptographic hashing al
 
 | Command | Dirsize | Filecount | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|:---|---:|---:|---:|---:|---:|
-| `deduplicator --dir ~/Data/tmp` | (~120G) | 721 files | 33.5 ± 28.6 | 25.3 | 151.5 | 1.87 ± 1.60 |
-| `deduplicator --dir ~/Data/books` | (~8.6G) | 1419 files | 24.5 ± 1.0 | 22.9 | 28.1 | 1.37 ± 0.08 |
-| `deduplicator --dir ~/Data/books --min-size 10M` | (~8.6G) | 1419 files | 17.9 ± 0.7 | 16.8 | 20.0 | 1.00 |
-| `deduplicator --dir ~/Data/ --types pdf,jpg,png,jpeg` | (~290G) | 104222 files | 1207.2 ± 37.0 | 1172.2 | 1287.7 | 67.27 ± 3.33 |
+| `deduplicator ~/Data/tmp` | (~120G) | 721 files | 33.5 ± 28.6 | 25.3 | 151.5 | 1.87 ± 1.60 |
+| `deduplicator ~/Data/books` | (~8.6G) | 1419 files | 24.5 ± 1.0 | 22.9 | 28.1 | 1.37 ± 0.08 |
+| `deduplicator ~/Data/books --min-size 10M` | (~8.6G) | 1419 files | 17.9 ± 0.7 | 16.8 | 20.0 | 1.00 |
+| `deduplicator ~/Data/ --types pdf,jpg,png,jpeg` | (~290G) | 104222 files | 1207.2 ± 37.0 | 1172.2 | 1287.7 | 67.27 ± 3.33 |
 
 * The last entry is lower because of the number of files deduplicator had to go through (~660895 Files). The average size of the files rarely affect the performance of deduplicator.
 
