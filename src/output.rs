@@ -9,11 +9,15 @@ use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
+use std::path::Path;
+use std::time::Duration;
 use std::{fs, io};
 use unicode_segmentation::UnicodeSegmentation;
 
-fn format_path(path: &str, opts: &Params) -> Result<String> {
-    let display_path = path.replace(opts.get_directory()?.to_string_lossy().as_ref(), "");
+fn format_path(path: &Path, opts: &Params) -> Result<String> {
+    let display_path = path
+        .to_string_lossy()
+        .replace(opts.get_directory()?.to_string_lossy().as_ref(), "");
     let display_range = if display_path.chars().count() > 32 {
         display_path
             .graphemes(true)
@@ -34,7 +38,7 @@ fn file_size(file: &File) -> Result<String> {
     Ok(format!("{:>12}", bytesize::ByteSize::b(file.size.unwrap())))
 }
 
-fn modified_time(path: &String) -> Result<String> {
+fn modified_time(path: &Path) -> Result<String> {
     let mdata = fs::metadata(path)?;
     let modified_time: DateTime<Utc> = mdata.modified()?.into();
 
@@ -74,7 +78,7 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
         .split(',')
         .filter(|element| !element.is_empty())
         .map(|index| index.parse::<usize>().unwrap_or_default())
-        .collect_vec();
+        .collect::<Vec<usize>>();
 
     if parsed_file_indices
         .clone()
@@ -100,12 +104,12 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
         .clone()
         .enumerate()
         .for_each(|(index, file)| {
-            println!("{}: {}", index.to_string().blue(), file.path);
+            println!("{}: {}", index.to_string().blue(), file.path.display());
         });
 
     match scan_group_confirmation().unwrap() {
         true => {
-            file_manager::delete_files(files_to_delete.collect_vec()).ok();
+            file_manager::delete_files(files_to_delete.collect::<Vec<File>>()).ok();
         }
         false => println!("{}", "\nCancelled Delete Operation.".red()),
     }
@@ -155,6 +159,7 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 
     let mut output_table = Table::new();
     let progress_bar = ProgressBar::new(duplicates.len() as u64);
+    progress_bar.enable_steady_tick(Duration::from_millis(50));
     let progress_style = ProgressStyle::default_bar()
         .template("{spinner:.green} [generating output] [{wide_bar:.cyan/blue}] {pos}/{len} files")
         .unwrap();
@@ -180,4 +185,33 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
         });
 
     output_table.printstd();
+}
+
+#[allow(unused)]
+pub fn raw(duplicates: DashMap<String, Vec<File>>, opts: &Params) -> Result<()> {
+    if duplicates.is_empty() {
+        println!(
+            "\n{}",
+            "No duplicates found matching your search criteria.".green()
+        );
+        return Ok(());
+    }
+
+    duplicates
+        .into_iter()
+        .sorted_unstable_by_key(|(_, f)| f.first().and_then(|ff| ff.size).unwrap_or_default())
+        .for_each(|(_hash, group)| {
+            group.iter().for_each(|file| {
+                println!(
+                    "{}\t{}\t{}",
+                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    file_size(file).unwrap_or_default().red(),
+                    modified_time(&file.path).unwrap_or_default().yellow()
+                )
+            });
+
+            println!("---");
+        });
+
+    Ok(())
 }

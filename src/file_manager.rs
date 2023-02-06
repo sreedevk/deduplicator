@@ -1,9 +1,10 @@
 use anyhow::Result;
 use colored::Colorize;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct File {
-    pub path: String,
+    pub path: PathBuf,
     pub size: Option<u64>,
     pub hash: Option<String>,
 }
@@ -11,8 +12,8 @@ pub struct File {
 pub fn delete_files(files: Vec<File>) -> Result<()> {
     files.into_iter().for_each(|file| {
         match std::fs::remove_file(file.path.clone()) {
-            Ok(_) => println!("{}: {}", "DELETED".green(), file.path),
-            Err(_) => println!("{}: {}", "FAILED".red(), file.path)
+            Ok(_) => println!("{}: {}", "DELETED".green(), file.path.display()),
+            Err(_) => println!("{}: {}", "FAILED".red(), file.path.display())
         }
     });
 
