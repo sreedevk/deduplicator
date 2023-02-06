@@ -6,12 +6,13 @@ use chrono::DateTime;
 use colored::Colorize;
 use dashmap::DashMap;
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
+use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
 use std::{fs, io};
 use unicode_segmentation::UnicodeSegmentation;
-use itertools::Itertools;
 
 fn format_path(path: &Path, opts: &Params) -> Result<String> {
     let display_path = path
@@ -158,6 +159,7 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
 
     let mut output_table = Table::new();
     let progress_bar = ProgressBar::new(duplicates.len() as u64);
+    progress_bar.enable_steady_tick(Duration::from_millis(50));
     let progress_style = ProgressStyle::default_bar()
         .template("{spinner:.green} [generating output] [{wide_bar:.cyan/blue}] {pos}/{len} files")
         .unwrap();
@@ -183,4 +185,33 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
         });
 
     output_table.printstd();
+}
+
+#[allow(unused)]
+pub fn raw(duplicates: DashMap<String, Vec<File>>, opts: &Params) -> Result<()> {
+    if duplicates.is_empty() {
+        println!(
+            "\n{}",
+            "No duplicates found matching your search criteria.".green()
+        );
+        return Ok(());
+    }
+
+    duplicates
+        .into_iter()
+        .sorted_unstable_by_key(|(_, f)| f.first().and_then(|ff| ff.size).unwrap_or_default())
+        .for_each(|(_hash, group)| {
+            group.iter().for_each(|file| {
+                println!(
+                    "{}\t{}\t{}",
+                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    file_size(file).unwrap_or_default().red(),
+                    modified_time(&file.path).unwrap_or_default().yellow()
+                )
+            });
+
+            println!("---");
+        });
+
+    Ok(())
 }
