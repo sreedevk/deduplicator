@@ -3,9 +3,9 @@ use anyhow::Result;
 use deduplicator_core::processor::Processor;
 use deduplicator_core::{fileinfo::FileInfo, scanner::Scanner};
 use indicatif::{ProgressBar, ProgressStyle};
-use std::time::Duration;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
 pub struct App;
 
@@ -14,20 +14,47 @@ impl App {
         let (scan_tx, scan_rx) = mpsc::channel::<usize>();
         let app_args_cloned: Params = app_args.clone().to_owned();
         let scanner_t = thread::spawn(move || -> Result<Vec<FileInfo>> {
-            Self::build_scanner(&app_args_cloned)?.scan(Some(scan_tx))
+            let scan_result = Self::build_scanner(&app_args_cloned)?.scan(Some(scan_tx.clone()));
+            scan_tx.send(0)?;
+
+            scan_result
         });
 
         let scanner_progress_t = thread::spawn(move || -> Result<()> {
             let progress = Self::create_progress_bar()?;
-            for received in scan_rx {
-                progress.inc(received as u64);
+            loop {
+                dbg!("testing");
+                match scan_rx.recv() {
+                    Ok(code) => match code {
+                        0 => {
+                            progress.finish();
+                            break;
+                        }
+                        _ => {
+                            progress.inc(1u64);
+                        }
+                    },
+                    Err(_) => {
+                        progress.finish();
+                        break;
+                    }
+                }
             }
 
             Ok(())
         });
 
-        let scan_results = scanner_t.join().unwrap()?;
-        scanner_progress_t.join().unwrap()?;
+        let scan_results  = scanner_t.join().unwrap()?;
+        let _scan_prog_tr = scanner_progress_t.join().unwrap()?;
+
+        let processor_t = thread::spawn(move || -> Result<Vec<FileInfo>> {
+            let processor = Processor::new(scan_results);
+            Ok(processor.sizewise()?.hashwise()?.files)
+        });
+
+        let duplicates = processor_t.join().unwrap()?;
+
+        dbg!(duplicates);
 
         Ok(())
     }
