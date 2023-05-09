@@ -14,7 +14,6 @@ fxhash = "0.2.1"
 globwalk = "0.8.1"
 indicatif = { version = "0.17.2", features = ["rayon"] }
 itertools = "0.10.5"
-memmap2 = "0.5.8"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
 unicode-segmentation = "1.10.0"

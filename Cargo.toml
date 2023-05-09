@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["deduplicator-core", "deduplicator-cli"]
+default-members = ["deduplicator-cli"]
 
 [workspace.package]
 name = "deduplicator"
