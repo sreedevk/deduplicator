@@ -1,8 +1,7 @@
 mod app;
-mod file_manager;
-mod output;
 mod params;
 mod formatter;
+mod interative;
 
 use anyhow::Result;
 use app::App;

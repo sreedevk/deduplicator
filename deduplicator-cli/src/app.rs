@@ -34,7 +34,8 @@ impl App {
                             progress.inc(1u64);
                         }
                     },
-                    Err(_) => {
+                    Err(e) => {
+                        dbg!(e);
                         progress.finish();
                         break;
                     }

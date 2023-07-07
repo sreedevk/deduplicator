@@ -22,7 +22,7 @@ impl Formatter {
             relative_path.to_str().unwrap_or_default().to_string(),
             width = min_path_length
         );
-        
+
         Ok(formatted_path)
     }
 
@@ -35,7 +35,7 @@ impl Formatter {
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
 
-    pub fn print(raw: Vec<FileInfo>, app_args: &Params) -> Result<()> {
+    pub fn generate_table(raw: Vec<FileInfo>, app_args: &Params) -> Result<Table> {
         let basepath_length = app_args.get_directory()?.to_str().unwrap_or_default().len();
         let max_filepath_length = raw
             .iter()
@@ -83,6 +83,11 @@ impl Formatter {
             output_table.add_row(row![hash.green(), inner_table]);
         });
 
+        Ok(output_table)
+    }
+
+    pub fn print(raw: Vec<FileInfo>, app_args: &Params) -> Result<()> {
+        let output_table = Self::generate_table(raw, app_args)?;
         output_table.printstd();
 
         Ok(())
