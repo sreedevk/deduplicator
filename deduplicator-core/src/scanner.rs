@@ -131,10 +131,11 @@ impl Scanner {
             .map(|entity| entity.into_path())
             .filter(|path| path.is_file())
             .map(|file| FileInfo::new(file))
-            .tap(|_| {
-                if let Some(cc) = comm_channel {
+            .map(|file| {
+                if let Some(cc) = &comm_channel {
                     cc.send(1);
                 }
+                file
             })
             .filter_map(Result::ok)
             .collect::<Vec<FileInfo>>())
