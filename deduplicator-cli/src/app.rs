@@ -1,3 +1,4 @@
+use crate::formatter::Formatter;
 use crate::params::Params;
 use anyhow::Result;
 use deduplicator_core::processor::Processor;
@@ -23,7 +24,6 @@ impl App {
         let scanner_progress_t = thread::spawn(move || -> Result<()> {
             let progress = Self::create_progress_bar()?;
             loop {
-                dbg!("testing");
                 match scan_rx.recv() {
                     Ok(code) => match code {
                         0 => {
@@ -44,7 +44,7 @@ impl App {
             Ok(())
         });
 
-        let scan_results  = scanner_t.join().unwrap()?;
+        let scan_results = scanner_t.join().unwrap()?;
         let _scan_prog_tr = scanner_progress_t.join().unwrap()?;
 
         let processor_t = thread::spawn(move || -> Result<Vec<FileInfo>> {
@@ -54,8 +54,7 @@ impl App {
 
         let duplicates = processor_t.join().unwrap()?;
 
-        dbg!(duplicates);
-
+        Formatter::print(duplicates, &app_args)?;
         Ok(())
     }
 
@@ -64,7 +63,7 @@ impl App {
         let progress_style =
             ProgressStyle::with_template("{spinner:.green} [mapping paths] {pos} paths")?;
         progress.set_style(progress_style);
-        progress.enable_steady_tick(Duration::from_millis(50));
+        progress.enable_steady_tick(Duration::from_millis(10));
 
         Ok(progress)
     }

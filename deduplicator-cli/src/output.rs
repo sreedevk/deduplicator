@@ -1,4 +1,4 @@
-use crate::file_manager::{self, File};
+use crate::file_manager;
 use crate::params::Params;
 use anyhow::Result;
 use chrono::offset::Utc;
@@ -6,36 +6,20 @@ use chrono::DateTime;
 use colored::Colorize;
 use dashmap::DashMap;
 use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
-use itertools::Itertools;
 use prettytable::{format, row, Table};
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
 use std::{fs, io};
-use unicode_segmentation::UnicodeSegmentation;
+use deduplicator_core::fileinfo::FileInfo;
 
-fn format_path(path: &Path, opts: &Params) -> Result<String> {
-    let display_path = path
-        .to_string_lossy()
-        .replace(opts.get_directory()?.to_string_lossy().as_ref(), "");
-    let display_range = if display_path.chars().count() > 32 {
-        display_path
-            .graphemes(true)
-            .collect::<Vec<&str>>()
-            .into_iter()
-            .rev()
-            .take(32)
-            .rev()
-            .collect()
-    } else {
-        display_path
-    };
-
-    Ok(format!("...{display_range:<32}"))
+fn format_path(path: &Path) -> Result<String> {
+    let display_path = path.to_string_lossy();
+    Ok(format!("{display_path}"))
 }
 
-fn file_size(file: &File) -> Result<String> {
-    Ok(format!("{:>12}", bytesize::ByteSize::b(file.size.unwrap())))
+fn file_size(file: &FileInfo) -> Result<String> {
+    Ok(format!("{:>12}", bytesize::ByteSize::b(file.size)))
 }
 
 fn modified_time(path: &Path) -> Result<String> {
@@ -69,7 +53,7 @@ fn scan_group_confirmation() -> Result<bool> {
     }
 }
 
-fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usize, table: Table) {
+fn process_group_action(duplicates: &Vec<FileInfo>, dup_index: usize, dup_size: usize, table: Table) {
     println!("\nDuplicate Set {} of {}\n", dup_index + 1, dup_size);
     table.printstd();
     let files_to_delete = scan_group_instruction().unwrap_or_default();
@@ -109,13 +93,13 @@ fn process_group_action(duplicates: &Vec<File>, dup_index: usize, dup_size: usiz
 
     match scan_group_confirmation().unwrap() {
         true => {
-            file_manager::delete_files(files_to_delete.collect::<Vec<File>>()).ok();
+            file_manager::delete_files(files_to_delete.collect::<Vec<FileInfo>>()).ok();
         }
         false => println!("{}", "\nCancelled Delete Operation.".red()),
     }
 }
 
-pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
+pub fn interactive(duplicates: DashMap<String, Vec<FileInfo>>, opts: &Params) {
     if duplicates.is_empty() {
         println!(
             "\n{}",
@@ -127,9 +111,6 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     duplicates
         .clone()
         .into_iter()
-        .sorted_unstable_by_key(|(_, f)| {
-            -(f.first().and_then(|ff| ff.size).unwrap_or_default() as i64)
-        }) // sort by descending file size in interactive mode
         .enumerate()
         .for_each(|(gindex, (_, group))| {
             let mut itable = Table::new();
@@ -138,7 +119,7 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
             group.iter().enumerate().for_each(|(index, file)| {
                 itable.add_row(row![
                     index,
-                    format_path(&file.path, opts).unwrap_or_default().blue(),
+                    format_path(&file.path).unwrap_or_default().blue(),
                     file_size(file).unwrap_or_default().red(),
                     modified_time(&file.path).unwrap_or_default().yellow()
                 ]);
@@ -148,7 +129,7 @@ pub fn interactive(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
         });
 }
 
-pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
+pub fn print(duplicates: DashMap<String, Vec<FileInfo>>) {
     if duplicates.is_empty() {
         println!(
             "\n{}",
@@ -167,51 +148,4 @@ pub fn print(duplicates: DashMap<String, Vec<File>>, opts: &Params) {
     progress_bar.set_style(progress_style);
     output_table.set_titles(row!["hash", "duplicates"]);
 
-    duplicates
-        .into_iter()
-        .sorted_unstable_by_key(|(_, f)| f.first().and_then(|ff| ff.size).unwrap_or_default())
-        .progress_with(progress_bar)
-        .for_each(|(hash, group)| {
-            let mut inner_table = Table::new();
-            inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-            group.iter().for_each(|file| {
-                inner_table.add_row(row![
-                    format_path(&file.path, opts).unwrap_or_default().blue(),
-                    file_size(file).unwrap_or_default().red(),
-                    modified_time(&file.path).unwrap_or_default().yellow()
-                ]);
-            });
-            output_table.add_row(row![hash.green(), inner_table]);
-        });
-
-    output_table.printstd();
-}
-
-#[allow(unused)]
-pub fn raw(duplicates: DashMap<String, Vec<File>>, opts: &Params) -> Result<()> {
-    if duplicates.is_empty() {
-        println!(
-            "\n{}",
-            "No duplicates found matching your search criteria.".green()
-        );
-        return Ok(());
-    }
-
-    duplicates
-        .into_iter()
-        .sorted_unstable_by_key(|(_, f)| f.first().and_then(|ff| ff.size).unwrap_or_default())
-        .for_each(|(_hash, group)| {
-            group.iter().for_each(|file| {
-                println!(
-                    "{}\t{}\t{}",
-                    format_path(&file.path, opts).unwrap_or_default().blue(),
-                    file_size(file).unwrap_or_default().red(),
-                    modified_time(&file.path).unwrap_or_default().yellow()
-                )
-            });
-
-            println!("---");
-        });
-
-    Ok(())
 }

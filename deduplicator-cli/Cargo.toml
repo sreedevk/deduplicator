@@ -18,6 +18,7 @@ prettytable-rs = "0.10.0"
 rayon = "1.6.1"
 unicode-segmentation = "1.10.0"
 deduplicator-core = { path = "../deduplicator-core" }
+pathdiff = "0.2.1"
 
 [[bin]]
 name = "deduplicator"

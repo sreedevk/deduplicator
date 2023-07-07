@@ -11,8 +11,9 @@ fn main() -> Result<()> {
 
     let processor = Processor::new(scan_results);
     let final_processor = processor.sizewise()?.hashwise()?;
+    let display_vec = final_processor.files.into_iter().map(|file| file.path ).collect::<Vec<PathBuf>>();
 
-    dbg!(final_processor);
+    dbg!(display_vec);
 
 
     Ok(())

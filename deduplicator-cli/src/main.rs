@@ -2,8 +2,6 @@ mod app;
 mod file_manager;
 mod output;
 mod params;
-mod scanner;
-mod filters;
 mod formatter;
 
 use anyhow::Result;
