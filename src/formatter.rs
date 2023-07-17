@@ -16,7 +16,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 impl Formatter {
-    fn human_path(file: &FileInfo, app_args: &Params, min_path_length: usize) -> Result<String> {
+    pub fn human_path(file: &FileInfo, app_args: &Params, min_path_length: usize) -> Result<String> {
         let base_directory: PathBuf = app_args.get_directory()?.to_path_buf();
         let relative_path = diff_paths(file.path.clone(), base_directory).unwrap_or_default();
 
@@ -29,11 +29,11 @@ impl Formatter {
         Ok(formatted_path)
     }
 
-    fn human_filesize(file: &FileInfo) -> Result<String> {
+    pub fn human_filesize(file: &FileInfo) -> Result<String> {
         Ok(format!("{:>12}", bytesize::ByteSize::b(file.size)))
     }
 
-    fn human_mtime(file: &FileInfo) -> Result<String> {
+    pub fn human_mtime(file: &FileInfo) -> Result<String> {
         let modified_time: DateTime<Utc> = file.filemeta.modified()?.into();
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
@@ -110,6 +110,14 @@ impl Formatter {
     }
 
     pub fn print(raw: Vec<FileInfo>, app_args: &Params) -> Result<()> {
+        if raw.is_empty() {
+            println!(
+                "\n\n{}\n",
+                "No duplicates found matching your search criteria.".green()
+            );
+            return Ok(());
+        }
+
         let output_table = Self::generate_table(raw, app_args)?;
         output_table.printstd();
 
