@@ -1,151 +1,173 @@
-use crate::{file_manager::File, filters, params::Params};
+#![allow(unused)]
+use crate::{fileinfo::FileInfo, params::Params};
 use anyhow::Result;
-use dashmap::DashMap;
-use fxhash::hash64 as hasher;
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressIterator, ProgressStyle};
-use memmap2::Mmap;
-use rayon::prelude::*;
-use std::hash::Hasher;
-use std::time::Duration;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-};
+use indicatif::{ProgressBar, ProgressStyle};
+use std::{fs, path::PathBuf, time::Duration};
 
-#[derive(Clone, Copy)]
-enum IndexCritera {
-    Size,
-    Hash,
+use globwalk::{GlobWalker, GlobWalkerBuilder};
+
+#[derive(Debug, Clone)]
+pub struct Scanner {
+    pub directory: Option<PathBuf>,
+    pub filetypes: Option<String>,
+    pub min_depth: Option<usize>,
+    pub max_depth: Option<usize>,
+    pub min_size: Option<u64>,
+    pub follow_links: bool,
 }
 
-pub fn duplicates(app_opts: &Params) -> Result<DashMap<String, Vec<File>>> {
-    let scan_results = scan(app_opts)?;
-    let size_index_store = index_files(scan_results, IndexCritera::Size)?;
-
-    let sizewize_duplicate_files = size_index_store
-        .into_par_iter()
-        .filter(|(_, files)| files.len() > 1)
-        .map(|(_, files)| files)
-        .flatten()
-        .collect::<Vec<File>>();
-
-    if sizewize_duplicate_files.len() > 1 {
-        let hash_index_store = index_files(sizewize_duplicate_files, IndexCritera::Hash)?;
-        let duplicate_files = hash_index_store
-            .into_par_iter()
-            .filter(|(_, files)| files.len() > 1)
-            .collect();
-
-        Ok(duplicate_files)
-    } else {
-        Ok(DashMap::new())
+impl Scanner {
+    pub fn new() -> Self {
+        Self {
+            directory: None,
+            filetypes: None,
+            min_depth: None,
+            max_depth: None,
+            min_size: None,
+            follow_links: true,
+        }
     }
-}
 
-fn scan(app_opts: &Params) -> Result<Vec<File>> {
-    let walker = app_opts.get_glob_walker()?;
-    let progress = ProgressBar::new_spinner();
-    let progress_style =
-        ProgressStyle::with_template("{spinner:.green} [mapping paths] {pos} paths")?;
-    progress.set_style(progress_style);
-    progress.enable_steady_tick(Duration::from_millis(50));
+    pub fn build(app_args: &Params) -> Result<Self> {
+        let scan_directory = app_args.get_directory()?;
+        Ok(Scanner::new())
+            .map(|scanner| scanner.directory(scan_directory))
+            .map(|scanner| match app_args.get_min_size() {
+                Some(min_size) => scanner.min_size(min_size),
+                None => scanner,
+            })
+            .map(|scanner| match app_args.get_types() {
+                Some(ftypes) => scanner.filetypes(ftypes),
+                None => scanner,
+            })
+            .map(|scanner| match app_args.min_depth {
+                Some(min_depth) => scanner.min_depth(min_depth),
+                None => scanner,
+            })
+            .map(|scanner| match app_args.max_depth {
+                Some(max_depth) => scanner.max_depth(max_depth),
+                None => scanner,
+            })
+    }
 
-    let files = walker
-        .progress_with(progress)
-        .filter_map(Result::ok)
-        .map(|file| file.into_path())
-        .filter(|fpath| fpath.is_file())
-        .collect::<Vec<PathBuf>>();
+    pub fn min_size(&self, min_size: u64) -> Self {
+        Self {
+            min_size: Some(min_size),
+            ..self.clone()
+        }
+    }
 
-    let scan_progress = ProgressBar::new(files.len() as u64);
-    let scan_progress_style = ProgressStyle::with_template(
-        "{spinner:.green} [processing mapped paths] [{wide_bar:.cyan/blue}] {pos}/{len} files",
-    )?;
-    scan_progress.set_style(scan_progress_style);
-    scan_progress.enable_steady_tick(Duration::from_millis(50));
+    pub fn min_depth(&self, min_depth: usize) -> Self {
+        Self {
+            min_depth: Some(min_depth),
+            ..self.clone()
+        }
+    }
 
-    let scan_results = files
-        .into_par_iter()
-        .progress_with(scan_progress)
-        .map(|fpath| File {
-            path: fpath.clone(),
-            hash: None,
-            size: Some(
-                fs::metadata(fpath)
-                    .map(|metadata| metadata.len())
-                    .unwrap_or_default(),
-            ),
+    pub fn max_depth(&self, max_depth: usize) -> Self {
+        Self {
+            max_depth: Some(max_depth),
+            ..self.clone()
+        }
+    }
+
+    pub fn directory(&self, dir: PathBuf) -> Self {
+        Self {
+            directory: Some(dir),
+            ..self.clone()
+        }
+    }
+
+    pub fn filetypes(&self, patterns: String) -> Self {
+        Self {
+            filetypes: Some(patterns),
+            ..self.clone()
+        }
+    }
+
+    pub fn ignore_links(&self) -> Self {
+        Self {
+            follow_links: false,
+            ..self.clone()
+        }
+    }
+
+    pub fn follow_links(&self) -> Self {
+        Self {
+            follow_links: true,
+            ..self.clone()
+        }
+    }
+
+    fn scan_patterns(&self) -> Result<String> {
+        Ok(match self.filetypes.clone() {
+            Some(ftypes) => format!("**/*{{{ftypes}}}"),
+            None => "**/*".to_string(),
         })
-        .filter(|file| filters::is_file_gt_min_size(app_opts, file))
-        .collect();
+    }
 
-    Ok(scan_results)
-}
+    fn scan_dir(&self) -> Result<PathBuf> {
+        let scan_dir = match self.directory.clone() {
+            Some(path) => path,
+            None => std::env::current_dir()?,
+        };
 
-fn process_file_index(
-    mut file: File,
-    store: &DashMap<String, Vec<File>>,
-    index_criteria: IndexCritera,
-) {
-    match index_criteria {
-        IndexCritera::Size => {
-            store
-                .entry(file.size.unwrap_or_default().to_string())
-                .and_modify(|fileset| fileset.push(file.clone()))
-                .or_insert_with(|| vec![file]);
-        }
-        IndexCritera::Hash => {
-            file.hash = Some(hash_file(&file.path).unwrap_or_default());
-            store
-                .entry(file.clone().hash.unwrap_or_default())
-                .and_modify(|fileset| fileset.push(file.clone()))
-                .or_insert_with(|| vec![file]);
+        Ok(fs::canonicalize(scan_dir)?)
+    }
+
+    fn attach_link_opts(&self, walker: GlobWalkerBuilder) -> Result<GlobWalkerBuilder> {
+        Ok(walker.follow_links(self.follow_links))
+    }
+
+    fn attach_walker_min_depth(&self, walker: GlobWalkerBuilder) -> Result<GlobWalkerBuilder> {
+        match self.min_depth {
+            Some(min_depth) => Ok(walker.min_depth(min_depth)),
+            None => Ok(walker),
         }
     }
-}
 
-fn index_files(
-    files: Vec<File>,
-    index_criteria: IndexCritera,
-) -> Result<DashMap<String, Vec<File>>> {
-    let store: DashMap<String, Vec<File>> = DashMap::new();
-    let index_progress = ProgressBar::new(files.len() as u64);
-    let index_progress_style = ProgressStyle::with_template(
-        "{spinner:.green} [indexing files] [{wide_bar:.cyan/blue}] {pos}/{len} files",
-    )?;
-    index_progress.set_style(index_progress_style);
-    index_progress.enable_steady_tick(Duration::from_millis(50));
+    fn attach_walker_max_depth(&self, walker: GlobWalkerBuilder) -> Result<GlobWalkerBuilder> {
+        match self.max_depth {
+            Some(max_depth) => Ok(walker.max_depth(max_depth)),
+            None => Ok(walker),
+        }
+    }
+    fn build_walker(&self) -> Result<GlobWalker> {
+        let walker = Ok(GlobWalkerBuilder::from_patterns(
+            self.scan_dir()?,
+            &[self.scan_patterns()?],
+        ))
+        .and_then(|walker| self.attach_walker_min_depth(walker))
+        .and_then(|walker| self.attach_walker_max_depth(walker))
+        .and_then(|walker| self.attach_link_opts(walker))?;
 
-    files
-        .into_par_iter()
-        .progress_with(index_progress)
-        .for_each(|file| process_file_index(file, &store, index_criteria));
+        Ok(walker.build()?)
+    }
 
-    Ok(store)
-}
+    pub fn scan(&self) -> Result<Vec<FileInfo>> {
+        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
+        let progress_bar = ProgressBar::new_spinner();
+        progress_bar.set_style(progress_style);
+        progress_bar.enable_steady_tick(Duration::from_millis(50));
+        progress_bar.set_message("paths mapped");
+        let min_size = self.min_size.unwrap_or_default();
 
-fn incremental_hashing(filepath: &Path) -> Result<String> {
-    let file = fs::File::open(filepath)?;
-    let fmap = unsafe { Mmap::map(&file)? };
-    let mut inchasher = fxhash::FxHasher::default();
+        let results = self
+            .build_walker()?
+            .filter_map(Result::ok)
+            .map(|entity| entity.into_path())
+            .map(|path| {
+                progress_bar.inc(1);
+                path
+            })
+            .filter(|path| path.is_file())
+            .map(FileInfo::new)
+            .filter_map(Result::ok)
+            .filter(|file| file.size > min_size)
+            .collect::<Vec<FileInfo>>();
 
-    fmap.chunks(1_000_000)
-        .for_each(|mega| inchasher.write(mega));
+        progress_bar.finish_with_message("paths mapped");
 
-    Ok(format!("{}", inchasher.finish()))
-}
-
-fn standard_hashing(filepath: &Path) -> Result<String> {
-    let file = fs::read(filepath)?;
-    Ok(hasher(&*file).to_string())
-}
-
-fn hash_file(filepath: &Path) -> Result<String> {
-    let filemeta = fs::metadata(filepath)?;
-
-    // NOTE: USE INCREMENTAL HASHING ONLY FOR FILES > 100MB
-    match filemeta.len() < 100_000_000 {
-        true => standard_hashing(filepath),
-        false => incremental_hashing(filepath),
+        Ok(results)
     }
 }

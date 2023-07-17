@@ -1,6 +1,6 @@
 [package]
 name = "deduplicator"
-version = "0.1.6"
+version = "0.2.0"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 license = "MIT"
@@ -24,6 +24,7 @@ globwalk = "0.8.1"
 indicatif = { version = "0.17.2", features = ["rayon"] }
 itertools = "0.10.5"
 memmap2 = "0.5.8"
+pathdiff = "0.2.1"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
 unicode-segmentation = "1.10.0"
@@ -33,4 +34,3 @@ unicode-segmentation = "1.10.0"
 inherits = "release"
 debug = true
 split-debuginfo = "packed"
-
