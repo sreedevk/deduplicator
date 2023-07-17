@@ -5,7 +5,9 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use colored::Colorize;
 use dashmap::DashMap;
-use indicatif::{ProgressIterator, ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle};
+use indicatif::{
+    ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressIterator, ProgressStyle,
+};
 use pathdiff::diff_paths;
 use prettytable::{format, row, Table};
 use rayon::prelude::*;
@@ -43,7 +45,12 @@ impl Formatter {
             .map(|file| file.path.to_str().unwrap_or_default().len())
             .max()
             .unwrap_or_default();
-        let min_path_length = max_filepath_length - basepath_length;
+
+        let min_path_length = if max_filepath_length > basepath_length {
+            max_filepath_length - basepath_length
+        } else {
+            0
+        };
 
         let progress_style = ProgressStyle::with_template(
             "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
