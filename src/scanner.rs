@@ -132,7 +132,6 @@ impl Scanner {
             None => Ok(walker),
         }
     }
-
     fn build_walker(&self) -> Result<GlobWalker> {
         let walker = Ok(GlobWalkerBuilder::from_patterns(
             self.scan_dir()?,
@@ -151,6 +150,7 @@ impl Scanner {
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("paths mapped");
+        let min_size = self.min_size.unwrap_or_default();
 
         let results = self
             .build_walker()?
@@ -163,6 +163,7 @@ impl Scanner {
             .filter(|path| path.is_file())
             .map(|file| FileInfo::new(file))
             .filter_map(Result::ok)
+            .filter(|file| file.size > min_size)
             .collect::<Vec<FileInfo>>();
 
         progress_bar.finish_with_message("paths mapped");
