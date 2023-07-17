@@ -1,3 +1,2 @@
 /target
-/test_data
-.envrc
+/Cargo.lock
