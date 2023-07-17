@@ -60,7 +60,6 @@ pub fn init(result: Vec<FileInfo>, app_args: &Params) -> Result<()> {
 
     let duplicates: DashMap<String, Vec<FileInfo>> = DashMap::new();
     result
-        .clone()
         .into_par_iter()
         .progress_with(progress_bar)
         .with_finish(ProgressFinish::WithMessage(Cow::from("data reconciled")))
@@ -84,11 +83,11 @@ pub fn init(result: Vec<FileInfo>, app_args: &Params) -> Result<()> {
             group.iter().enumerate().for_each(|(index, file)| {
                 itable.add_row(row![
                     index,
-                    Formatter::human_path(&file, app_args, max_filepath_length)
+                    Formatter::human_path(file, app_args, min_path_length)
                         .unwrap_or_default()
                         .blue(),
                     Formatter::human_filesize(file).unwrap_or_default().red(),
-                    Formatter::human_mtime(&file).unwrap_or_default().yellow()
+                    Formatter::human_mtime(file).unwrap_or_default().yellow()
                 ]);
             });
 

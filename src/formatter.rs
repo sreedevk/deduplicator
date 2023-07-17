@@ -16,8 +16,12 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 impl Formatter {
-    pub fn human_path(file: &FileInfo, app_args: &Params, min_path_length: usize) -> Result<String> {
-        let base_directory: PathBuf = app_args.get_directory()?.to_path_buf();
+    pub fn human_path(
+        file: &FileInfo,
+        app_args: &Params,
+        min_path_length: usize,
+    ) -> Result<String> {
+        let base_directory: PathBuf = app_args.get_directory()?;
         let relative_path = diff_paths(file.path.clone(), base_directory).unwrap_or_default();
 
         let formatted_path = format!(
@@ -61,8 +65,7 @@ impl Formatter {
         progress_bar.set_message("reconciling data");
 
         let duplicates_table: DashMap<String, Vec<FileInfo>> = DashMap::new();
-        raw.clone()
-            .into_par_iter()
+        raw.into_par_iter()
             .progress_with(progress_bar)
             .with_finish(ProgressFinish::WithMessage(Cow::from("data reconciled")))
             .map(|file| file.hash())
@@ -95,11 +98,11 @@ impl Formatter {
                 inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
                 group.iter().for_each(|file| {
                     inner_table.add_row(row![
-                        Self::human_path(&file, &app_args, min_path_length)
+                        Self::human_path(file, app_args, min_path_length)
                             .unwrap_or_default()
                             .blue(),
-                        Self::human_filesize(&file).unwrap_or_default().red(),
-                        Self::human_mtime(&file).unwrap_or_default().yellow()
+                        Self::human_filesize(file).unwrap_or_default().red(),
+                        Self::human_mtime(file).unwrap_or_default().yellow()
                     ]);
                 });
 

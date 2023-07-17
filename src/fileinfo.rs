@@ -20,7 +20,6 @@ impl FileInfo {
 
         mapper
             .chunks(1_000_000)
-            .into_iter()
             .for_each(|chunk| primhasher.write(chunk));
 
         Ok(Self {

@@ -161,7 +161,7 @@ impl Scanner {
                 path
             })
             .filter(|path| path.is_file())
-            .map(|file| FileInfo::new(file))
+            .map(FileInfo::new)
             .filter_map(Result::ok)
             .filter(|file| file.size > min_size)
             .collect::<Vec<FileInfo>>();
