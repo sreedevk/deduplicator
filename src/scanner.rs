@@ -36,6 +36,10 @@ impl Scanner {
                 Some(min_size) => scanner.min_size(min_size),
                 None => scanner,
             })
+            .map(|scanner| match app_args.get_types() {
+                Some(ftypes) => scanner.filetypes(ftypes),
+                None => scanner,
+            })
             .map(|scanner| match app_args.min_depth {
                 Some(min_depth) => scanner.min_depth(min_depth),
                 None => scanner,
@@ -142,8 +146,7 @@ impl Scanner {
     }
 
     pub fn scan(&self) -> Result<Vec<FileInfo>> {
-        let progress_style =
-            ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
+        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));

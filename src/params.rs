@@ -46,4 +46,8 @@ impl Params {
         let dir = fs::canonicalize(dir_path)?;
         Ok(dir)
     }
+
+    pub fn get_types(&self) -> Option<String> {
+        self.types.clone()
+    }
 }
