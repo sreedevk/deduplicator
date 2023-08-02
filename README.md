@@ -121,3 +121,8 @@ Memory: 31731MiB (~32GiB)
 ## Screenshots
 
 ![](https://user-images.githubusercontent.com/36154121/213618143-e5182e39-731e-4817-87dd-1a6a0f38a449.gif)
+
+## Roadmap
+    - Tree format output for duplicate file listing
+    - GUI
+    - Packages for different operating system repositories (currently only installable via cargo) 
