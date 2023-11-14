@@ -121,8 +121,14 @@ impl Formatter {
             return Ok(());
         }
 
-        let output_table = Self::generate_table(raw, app_args)?;
-        output_table.printstd();
+        if app_args.json {
+            let output_json = serde_json::to_string_pretty(&raw)?;
+            println!("{}", output_json);
+            return Ok(());
+        } else {
+            let output_table = Self::generate_table(raw, app_args)?;
+            output_table.printstd();
+        }
 
         Ok(())
     }

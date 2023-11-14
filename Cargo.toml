@@ -1,6 +1,6 @@
 [package]
 name = "deduplicator"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 repository = "https://github.com/sreedevk/deduplicator"
@@ -28,6 +28,8 @@ memmap2 = "0.5.8"
 pathdiff = "0.2.1"
 prettytable-rs = "0.10.0"
 rayon = "1.6.1"
+serde = { version = "1.0.192", features = ["derive"] }
+serde_json = "1.0.108"
 unicode-segmentation = "1.10.0"
 
 [profile.release]

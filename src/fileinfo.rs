@@ -3,13 +3,15 @@ use memmap2::Mmap;
 use std::fs;
 use std::hash::Hasher;
 use std::{fs::Metadata, path::PathBuf};
+use serde::Serialize;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FileInfo {
     pub path: PathBuf,
-    pub filemeta: Metadata,
     pub hash: Option<String>,
     pub size: u64,
+    #[serde(skip)]
+    pub filemeta: Metadata,
 }
 
 impl FileInfo {
