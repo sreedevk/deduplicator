@@ -21,6 +21,7 @@ Options:
   -f, --follow-links           Follow links while scanning directories
   -h, --help                   Print help information
   -V, --version                Print version information
+      --json                    
 ```
 ### Examples
 
