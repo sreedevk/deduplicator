@@ -27,6 +27,9 @@ pub struct Params {
     /// Follow links while scanning directories
     #[arg(long, short)]
     pub follow_links: bool,
+    /// print json output
+    #[arg(long)]
+    pub json: bool,
 }
 
 impl Params {

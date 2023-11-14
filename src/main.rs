@@ -19,8 +19,12 @@ fn main() -> Result<()> {
     let results = processor.sizewise()?.hashwise()?;
 
     match app_args.interactive {
-        false => { Formatter::print(results.files, &app_args)?; }
-        true => { interactive::init(results.files, &app_args)?; }
+        false => {
+            Formatter::print(results.files, &app_args)?;
+        }
+        true => {
+            interactive::init(results.files, &app_args)?;
+        }
     }
 
     Ok(())
