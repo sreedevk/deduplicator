@@ -41,7 +41,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.metadata.dist]
-rust-toolchain-version = "1.79.0"
+rust-toolchain-version = "1.78.0"
 ci = ["github"]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc", "aarch64-apple-darwin"]
 cargo-dist-version = "0.0.7"
