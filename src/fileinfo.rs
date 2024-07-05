@@ -1,9 +1,10 @@
 use anyhow::Result;
+use gxhash::GxHasher;
 use memmap2::Mmap;
+use serde::Serialize;
 use std::fs;
 use std::hash::Hasher;
 use std::{fs::Metadata, path::PathBuf};
-use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileInfo {
@@ -18,7 +19,7 @@ impl FileInfo {
     pub fn hash(&self) -> Result<Self> {
         let file = fs::File::open(self.path.clone())?;
         let mapper = unsafe { Mmap::map(&file)? };
-        let mut primhasher = fxhash::FxHasher::default();
+        let mut primhasher = GxHasher::default();
 
         mapper
             .chunks(1_000_000)

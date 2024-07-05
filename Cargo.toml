@@ -1,6 +1,6 @@
 [package]
 name = "deduplicator"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 description = "find,filter,delete Duplicates"
 repository = "https://github.com/sreedevk/deduplicator"
@@ -20,8 +20,8 @@ chrono = "0.4.23"
 clap = { version = "4.0.32", features = ["derive"] }
 colored = "2.0.0"
 dashmap = { version = "5.4.0", features = ["rayon"] }
-fxhash = "0.2.1"
 globwalk = "0.8.1"
+gxhash = "3.4.1"
 indicatif = { version = "0.17.2", features = ["rayon"] }
 itertools = "0.10.5"
 memmap2 = "0.5.8"
@@ -41,7 +41,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.metadata.dist]
-rust-toolchain-version = "1.71.0"
+rust-toolchain-version = "1.78.0"
 ci = ["github"]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc", "aarch64-apple-darwin"]
 cargo-dist-version = "0.0.7"
