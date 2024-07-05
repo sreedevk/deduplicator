@@ -27,7 +27,6 @@ itertools = "0.10.5"
 memmap2 = "0.5.8"
 pathdiff = "0.2.1"
 prettytable-rs = "0.10.0"
-rand = "0.8.5"
 rayon = "1.6.1"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
@@ -42,7 +41,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.metadata.dist]
-rust-toolchain-version = "1.78.0"
+rust-toolchain-version = "1.79.0"
 ci = ["github"]
 targets = ["x86_64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-pc-windows-msvc", "aarch64-apple-darwin"]
 cargo-dist-version = "0.0.7"
