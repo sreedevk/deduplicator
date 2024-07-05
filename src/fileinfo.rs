@@ -4,6 +4,8 @@ use std::fs;
 use std::hash::Hasher;
 use std::{fs::Metadata, path::PathBuf};
 use serde::Serialize;
+use gxhash::GxBuildHasher;
+use rand::Rng;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct FileInfo {
@@ -18,7 +20,7 @@ impl FileInfo {
     pub fn hash(&self) -> Result<Self> {
         let file = fs::File::open(self.path.clone())?;
         let mapper = unsafe { Mmap::map(&file)? };
-        let mut primhasher = fxhash::FxHasher::default();
+        let mut primhasher = GxBuildHasher::default();
 
         mapper
             .chunks(1_000_000)
