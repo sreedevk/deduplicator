@@ -1,8 +1,20 @@
 {
+  description = "Deduplicator - Find, Filter & Destroy Duplicates";
+
   inputs = {
-    cargo2nix.url = "github:cargo2nix/cargo2nix/release-0.11.0";
-    flake-utils.follows = "cargo2nix/flake-utils";
-    nixpkgs.follows = "cargo2nix/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+    };
+    cargo2nix = {
+      url = "github:cargo2nix/cargo2nix/unstable";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.rust-overlay.follows = "rust-overlay";
+    };
   };
 
   outputs = inputs: with inputs;
@@ -14,15 +26,17 @@
         };
 
         rustPkgs = pkgs.rustBuilder.makePackageSet {
-          rustVersion = "1.75.0";
+          rustVersion = "1.78.0";
           packageFun = import ./Cargo.nix;
         };
 
       in
       rec {
         packages = {
-          deduplicator = (rustPkgs.deduplicator { });
+          deduplicator = (rustPkgs.workspace.deduplicator { });
+          default = packages.deduplicator;
         };
       }
     );
 }
+
