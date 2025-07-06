@@ -4,6 +4,7 @@ mod interactive;
 mod params;
 mod processor;
 mod scanner;
+mod pipeline;
 
 use anyhow::Result;
 use clap::Parser;
