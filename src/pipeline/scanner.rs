@@ -39,6 +39,7 @@ impl Scanner {
                             self.proc_count.fetch_add(1, Relaxed);
                             let copy_of_queue = self.proc_queue.clone();
                             let copy_of_files = self.files.clone();
+                            let copy_of_proc_count = self.proc_count.clone();
 
                             self.threadpool.execute(move || {
                                 if let Ok((files, dirs)) = Self::scan(path) {
@@ -46,6 +47,7 @@ impl Scanner {
                                     let mut f = copy_of_files.lock().unwrap();
                                     q.extend(files);
                                     f.extend(dirs);
+                                    copy_of_proc_count.fetch_sub(1, Relaxed);
                                 }
                             });
                         }
