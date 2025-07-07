@@ -7,13 +7,14 @@ use uuid::Uuid;
 
 const PARTIAL_SIZE: u64 = 4096;
 
+#[derive(Clone, Debug)]
 pub struct FileMeta {
-    id: Uuid,
-    path: Box<str>,
-    size: u64,
-    modtime: i64,
-    partial: Arc<[u8]>,
-    full_hash: Arc<[u8]>,
+    pub id: Uuid,
+    pub path: Box<str>,
+    pub size: u64,
+    pub modtime: i64,
+    pub partial: Arc<[u8]>,
+    pub full_hash: Arc<[u8]>,
 }
 
 impl FileMeta {

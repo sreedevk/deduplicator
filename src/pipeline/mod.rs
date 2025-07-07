@@ -2,6 +2,7 @@ mod file;
 mod processor;
 mod scanner;
 mod store;
+mod flags;
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;

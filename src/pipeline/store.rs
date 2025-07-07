@@ -5,8 +5,8 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum Index {
-    Size(Box<str>),
-    Partial(Box<str>),
+    Size(u64),
+    Partial(Arc<[u8]>),
     Full(Box<str>),
 }
 
@@ -21,12 +21,10 @@ impl Store {
         }
     }
 
-    pub fn add(&self, index: Index, file: Arc<FileMeta>) -> Result<()> {
+    pub fn add(&self, index: Index, file: Arc<FileMeta>) {
         let mut imut = self.internal.lock().unwrap();
         imut.entry(index)
             .and_modify(|fg| fg.push(file.clone()))
             .or_insert(vec![file]);
-
-        Ok(())
     }
 }

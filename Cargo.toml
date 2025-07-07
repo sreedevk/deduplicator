@@ -27,6 +27,7 @@ itertools = "0.10.5"
 memmap2 = "0.5.8"
 pathdiff = "0.2.1"
 prettytable-rs = "0.10.0"
+ratatui = "0.29.0"
 rayon = "1.6.1"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
