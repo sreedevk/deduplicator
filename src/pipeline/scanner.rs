@@ -31,7 +31,7 @@ impl Scanner {
                     let mut mfq = self.proc_queue.lock().unwrap();
                     mfq.push(path);
                 }
-                Err(mpsc::TryRecvError::Empty) => {}
+                Err(mpsc::TryRecvError::Empty) | Ok(Message::None) => {}
                 Ok(Message::Exit) | Err(_) => break,
             }
 

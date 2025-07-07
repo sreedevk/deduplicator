@@ -1,8 +1,8 @@
 mod file;
+mod flags;
 mod processor;
 mod scanner;
 mod store;
-mod flags;
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
@@ -22,6 +22,7 @@ pub type FileQueue = Arc<Mutex<Vec<Box<str>>>>;
 pub enum Message {
     AddScanDirectory(Box<str>),
     Exit,
+    None,
 }
 
 pub struct Server {
@@ -62,6 +63,7 @@ impl Server {
                         .send(Message::AddScanDirectory(path))
                         .unwrap_or_default();
                 }
+                Ok(Message::None) => {}
                 Ok(Message::Exit) | Err(_) => {
                     scanner_tx.send(Message::Exit).unwrap_or_default();
                     processor_tx.send(Message::Exit).unwrap_or_default();
