@@ -1,4 +1,4 @@
-mod file;
+pub mod file;
 mod flags;
 mod processor;
 mod scanner;
@@ -26,9 +26,9 @@ pub enum Message {
 }
 
 pub struct Server {
-    fq: FileQueue,
-    dupstore: Arc<Store>,
-    tpool: ThreadPool,
+    pub fq: FileQueue,
+    pub dupstore: Arc<Store>,
+    pub tpool: ThreadPool,
 }
 
 impl Server {

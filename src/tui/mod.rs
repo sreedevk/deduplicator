@@ -3,9 +3,10 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use ratatui::crossterm::event::{self, Event, KeyCode};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
 
+use crate::server::file::FileMeta;
 use crate::server::{Message, Server};
 use std::sync::Arc;
 
@@ -19,7 +20,7 @@ impl Tui {
         Self { app_tx, server }
     }
 
-    pub fn start(&self) -> Result<()> {
+    pub fn start(&mut self) -> Result<()> {
         let terminal = ratatui::init();
         self.run(terminal).expect("ui loop failed.");
         ratatui::restore();
@@ -28,7 +29,7 @@ impl Tui {
     }
 
     fn poll_events() -> Result<Message> {
-        match event::poll(Duration::from_millis(50)).context("event polling failed.")? {
+        match event::poll(Duration::from_millis(100)).context("event polling failed.")? {
             true => match event::read().context("event read failed.")? {
                 Event::Key(key) => match key.code {
                     KeyCode::Char('q') => Ok(Message::Exit),
@@ -52,11 +53,22 @@ impl Tui {
         }
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(Paragraph::new("Hello, World"), frame.area());
+    fn draw(&mut self, frame: &mut Frame) {
+        let items_clone = {
+            let mut_fq = self.server.fq.lock().unwrap();
+            mut_fq.clone()
+        };
+
+        let list = List::from_iter(
+            items_clone
+                .iter()
+                .map(|fpath| ListItem::new(format!("{}", fpath))),
+        );
+
+        frame.render_widget(list.block(Block::new().borders(Borders::ALL)), frame.area());
     }
 
-    fn run(&self, mut terminal: DefaultTerminal) -> Result<()> {
+    fn run(&mut self, mut terminal: DefaultTerminal) -> Result<()> {
         loop {
             terminal.draw(|f| self.draw(f))?;
             match self.handle_events() {

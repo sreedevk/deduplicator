@@ -1,7 +1,7 @@
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use threadpool::ThreadPool;
 
 use crate::params::Params;
@@ -29,7 +29,14 @@ impl App {
 
         let server_ptr = self.server.clone();
         let tui_server_ptr = self.server.clone();
-        let ui = Tui::new(app_tx, tui_server_ptr);
+        let mut ui = Tui::new(app_tx.clone(), tui_server_ptr);
+        let root_dir = self
+            .app_opts
+            .get_directory()?
+            .into_os_string()
+            .into_string()
+            .map_err(|_| anyhow!("path to str conv failed"))?
+            .into_boxed_str();
 
         self.tpool.execute(move || {
             server_ptr.start(server_rx).expect("server init failed");
@@ -50,6 +57,8 @@ impl App {
                 _ => continue,
             }
         });
+
+        app_tx.send(Message::AddScanDirectory(root_dir))?;
 
         self.tpool.join();
 
