@@ -4,7 +4,11 @@ mod interactive;
 mod params;
 mod processor;
 mod scanner;
+
+/* version 2.0 modules*/
 mod pipeline;
+mod cli;
+
 
 use anyhow::Result;
 use clap::Parser;

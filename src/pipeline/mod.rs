@@ -1,41 +1,76 @@
 mod file;
+mod processor;
 mod scanner;
+mod store;
+
+use anyhow::{anyhow, Result};
+use std::collections::HashMap;
+use std::sync::mpsc;
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Mutex;
+use threadpool::ThreadPool;
 
 use self::file::FileMeta;
+use self::processor::Processor;
+use self::scanner::Scanner;
+use self::store::Store;
 
-const CONCURRENCY: usize = 4;
+pub type FileQueue = Arc<Mutex<Vec<Box<str>>>>;
 
-pub struct Server { }
+pub enum Message {
+    AddScanDirectory(Box<str>),
+    Exit,
+}
+
+pub struct Server {
+    fq: FileQueue,
+    dupstore: Arc<Store>,
+    tpool: ThreadPool,
+}
 
 impl Server {
-    // pub fn new() -> Result<Self> {
-    //     Ok(Self {
-    //         index_queue: Arc::new(Mutex::new(vec![])),
-    //         index_tpool: ThreadPool::new(CONCURRENCY),
-    //         process_queue: Arc::new(Mutex::new(vec![])),
-    //     })
-    // }
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            fq: Arc::new(Mutex::new(vec![])),
+            dupstore: Arc::new(Store::new()),
+            tpool: ThreadPool::new(4),
+        })
+    }
 
-    // fn index(&self) -> Result<()> {
-    //     let mut iq = self.index_queue.lock().unwrap();
-    //     let mut pq = self.process_queue.lock().unwrap();
-    //
-    //     match iq.pop() {
-    //         None => Ok(()),
-    //         Some(QueueElem::File(path)) => {
-    //             pq.push(FileMeta::new(path)?);
-    //
-    //             Ok(())
-    //         }
-    //         Some(QueueElem::Directory(path)) => {
-    //             self.index_tpool.execute(move || {
-    //                 Scanner::new(&path);
-    //             });
-    //
-    //             Ok(())
-    //         }
-    //     }
-    // }
+    pub fn start(&self, rx: mpsc::Receiver<Message>) -> Result<()> {
+        let processor_fq = self.fq.clone();
+        let processor_store = self.dupstore.clone();
+        let (processor_tx, processor_rx) = channel::<Message>();
+        self.tpool.execute(move || {
+            Processor::new(processor_fq, processor_store, processor_rx)
+                .process()
+                .ok();
+        });
+
+        let scanner_fq = self.fq.clone();
+        let (scanner_tx, scanner_rx) = channel::<Message>();
+        self.tpool.execute(move || {
+            Scanner::new(scanner_fq, scanner_rx).index().ok();
+        });
+
+        self.tpool.execute(move || loop {
+            match rx.recv() {
+                Ok(Message::AddScanDirectory(path)) => {
+                    scanner_tx
+                        .send(Message::AddScanDirectory(path))
+                        .unwrap_or_default();
+                }
+                Ok(Message::Exit) | Err(_) => {
+                    scanner_tx.send(Message::Exit).unwrap_or_default();
+                    processor_tx.send(Message::Exit).unwrap_or_default();
+                    break;
+                }
+            };
+        });
+
+        self.tpool.join();
+
+        Ok(())
+    }
 }
