@@ -1,7 +1,6 @@
 use super::{FileQueue, Message};
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use std::fs;
-use std::sync::atomic::{AtomicU32, Ordering::Relaxed};
 use std::sync::mpsc::{self, Receiver};
 use std::sync::Arc;
 use std::sync::Mutex;
