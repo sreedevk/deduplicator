@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::collections::HashMap;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 
 use super::file::FileMeta;
@@ -41,7 +41,6 @@ impl Processor {
                 Some(file_res) => match FileMeta::new(file_res) {
                     Err(_) => continue,
                     Ok(fm) => {
-                        // self.duplicates.add(Index::Partial(fm_arc.partial), fm_arc.clone());
                         let fm_arc = Arc::new(fm);
                         self.duplicates
                             .add(Index::Size(fm_arc.size), fm_arc.clone());

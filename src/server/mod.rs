@@ -4,15 +4,13 @@ mod processor;
 mod scanner;
 mod store;
 
-use anyhow::{anyhow, Result};
-use std::collections::HashMap;
+use anyhow::Result;
 use std::sync::mpsc;
 use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Mutex;
 use threadpool::ThreadPool;
 
-use self::file::FileMeta;
 use self::processor::Processor;
 use self::scanner::Scanner;
 use self::store::Store;
@@ -44,16 +42,20 @@ impl Server {
         let processor_fq = self.fq.clone();
         let processor_store = self.dupstore.clone();
         let (processor_tx, processor_rx) = channel::<Message>();
+        let (server_tx, server_rx) = channel::<Message>();
+
         self.tpool.execute(move || {
             Processor::new(processor_fq, processor_store, processor_rx)
                 .process()
-                .ok();
+                .expect("processer execution interrupted.");
         });
 
         let scanner_fq = self.fq.clone();
         let (scanner_tx, scanner_rx) = channel::<Message>();
         self.tpool.execute(move || {
-            Scanner::new(scanner_fq, scanner_rx).index().ok();
+            Scanner::new(scanner_fq, scanner_rx)
+                .index()
+                .expect("scanner indexing interrupted.");
         });
 
         self.tpool.execute(move || loop {
@@ -61,7 +63,7 @@ impl Server {
                 Ok(Message::AddScanDirectory(path)) => {
                     scanner_tx
                         .send(Message::AddScanDirectory(path))
-                        .unwrap_or_default();
+                        .expect("scanner tx message passing failed.");
                 }
                 Ok(Message::None) => {}
                 Ok(Message::Exit) | Err(_) => {

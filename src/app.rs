@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::Arc;
 
@@ -51,8 +52,13 @@ impl App {
                 Ok(Message::Exit) => {
                     server_tx
                         .send(Message::Exit)
-                        .expect("message passing to app from ui failed");
+                        .expect("message passing to app from ui failed.");
                     break;
+                }
+                Ok(Message::AddScanDirectory(dir)) => {
+                    server_tx
+                        .send(Message::AddScanDirectory(dir))
+                        .expect("message passing to server failed.");
                 }
                 _ => continue,
             }

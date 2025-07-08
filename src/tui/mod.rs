@@ -1,4 +1,6 @@
+use std::collections::VecDeque;
 use std::sync::mpsc::Sender;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
@@ -6,7 +8,6 @@ use ratatui::crossterm::event::{self, Event, KeyCode};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
 
-use crate::server::file::FileMeta;
 use crate::server::{Message, Server};
 use std::sync::Arc;
 
@@ -54,17 +55,16 @@ impl Tui {
     }
 
     fn draw(&mut self, frame: &mut Frame) {
-        let items_clone = {
-            let mut_fq = self.server.fq.lock().unwrap();
-            mut_fq.clone()
-        };
+        let listitems = self
+            .server
+            .dupstore
+            .entries()
+            .iter()
+            .flatten()
+            .map(|f| ListItem::new(format!("{}", f.path)))
+            .collect::<Vec<ListItem>>();
 
-        let list = List::from_iter(
-            items_clone
-                .iter()
-                .map(|fpath| ListItem::new(format!("{}", fpath))),
-        );
-
+        let list = List::new(listitems);
         frame.render_widget(list.block(Block::new().borders(Borders::ALL)), frame.area());
     }
 

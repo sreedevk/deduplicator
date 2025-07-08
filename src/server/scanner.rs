@@ -57,6 +57,8 @@ impl Scanner {
             }
         }
 
+        self.threadpool.join();
+
         Ok(())
     }
 
@@ -84,4 +86,8 @@ impl Scanner {
 
         Ok((files, dirs))
     }
+}
+
+#[cfg(test)]
+mod tests {
 }
