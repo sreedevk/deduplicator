@@ -10,6 +10,7 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Mutex;
 use threadpool::ThreadPool;
+use vfs::PhysicalFS;
 
 use self::processor::Processor;
 use self::scanner::Scanner;
@@ -52,8 +53,9 @@ impl Server {
 
         let scanner_fq = self.fq.clone();
         let (scanner_tx, scanner_rx) = channel::<Message>();
+        let filesystem = Arc::new(PhysicalFS::new("/"));
         self.tpool.execute(move || {
-            Scanner::new(scanner_fq, scanner_rx)
+            Scanner::new(scanner_fq, scanner_rx, filesystem)
                 .index()
                 .expect("scanner indexing interrupted.");
         });

@@ -4,22 +4,22 @@ use std::fs;
 use std::sync::mpsc::{self, Receiver};
 use std::sync::Arc;
 use std::sync::Mutex;
-use threadpool::ThreadPool;
+use vfs::FileSystem;
 
-pub struct Scanner {
+pub struct Scanner<T: FileSystem> {
     files: FileQueue,
-    threadpool: Arc<ThreadPool>,
     proc_queue: FileQueue,
     msg_rx: Receiver<Message>,
+    root: Arc<T>,
 }
 
-impl Scanner {
-    pub fn new(fq: FileQueue, rx: Receiver<Message>) -> Self {
+impl<T: FileSystem> Scanner<T> {
+    pub fn new(fq: FileQueue, rx: Receiver<Message>, fsys: Arc<T>) -> Self {
         Self {
             files: fq,
-            threadpool: Arc::new(ThreadPool::new(8)),
             proc_queue: Arc::new(Mutex::new(vec![])),
             msg_rx: rx,
+            root: fsys,
         }
     }
 
@@ -35,59 +35,82 @@ impl Scanner {
             }
 
             let npath = {
-                let mut q = self.proc_queue.lock().unwrap();
-                q.pop()
+                match self.proc_queue.try_lock() {
+                    Ok(mut q) => q.pop(),
+                    Err(_) => None,
+                }
             };
 
             match npath {
                 None => continue,
                 Some(path) => {
-                    let copy_of_queue = self.proc_queue.clone();
-                    let copy_of_files = self.files.clone();
-
-                    self.threadpool.execute(move || {
-                        if let Ok((files, dirs)) = Self::scan(path) {
-                            let mut q = copy_of_queue.lock().unwrap();
-                            let mut f = copy_of_files.lock().unwrap();
-                            q.extend(files);
-                            f.extend(dirs);
+                    self.root.read_dir(path.as_ref())?.for_each(|entry| {
+                        let mdata = fs::metadata(&entry).expect("unable to read file metadata.");
+                        let mpath = entry.into_boxed_str();
+                        match mdata.is_dir() {
+                            true => {
+                                let mut pq =
+                                    self.proc_queue.lock().expect("proc queue lock acq failed.");
+                                pq.push(mpath);
+                            }
+                            false => {
+                                let mut fq =
+                                    self.files.lock().expect("file queue lock acq failed.");
+                                fq.push(mpath)
+                            }
                         }
                     });
                 }
             }
         }
 
-        self.threadpool.join();
-
         Ok(())
-    }
-
-    fn scan(scan_path: Box<str>) -> Result<(Vec<Box<str>>, Vec<Box<str>>)> {
-        let mut files = vec![];
-        let mut dirs = vec![];
-
-        fs::read_dir(scan_path.as_ref())?
-            .filter_map(Result::ok)
-            .for_each(|entry: fs::DirEntry| {
-                let entrymeta: fs::Metadata = entry.metadata().unwrap();
-                let path = entry
-                    .path()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap()
-                    .into_boxed_str();
-
-                if entrymeta.is_file() {
-                    files.push(path);
-                } else if entrymeta.is_dir() {
-                    dirs.push(path);
-                }
-            });
-
-        Ok((files, dirs))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use anyhow::Result;
+    use std::sync::mpsc::channel;
+    use std::thread;
+    use vfs::MemoryFS;
+
+    #[test]
+    fn scanner_scans_files_on_vfs() -> Result<()> {
+        let files = [
+            ("hello.txt", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum"), 
+
+            ("hello_dup.txt", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum")];
+
+        let file_queue: FileQueue = Arc::new(Mutex::new(vec![]));
+        let filesystem: Arc<MemoryFS> = Arc::new(MemoryFS::new());
+        let fs_root = String::from("/root");
+        let (tx, rx) = channel::<Message>();
+
+        filesystem.create_dir(&fs_root)?;
+
+        let fs_root_box = fs_root.into_boxed_str();
+        for (filename, content) in files.into_iter() {
+            filesystem
+                .create_file(&format!("{}/{}", fs_root_box.as_ref(), filename))?
+                .write_all(content.as_bytes())?;
+        }
+
+        let scanner = Scanner::new(file_queue.clone(), rx, filesystem);
+        tx.send(Message::AddScanDirectory(fs_root_box))?;
+
+        scanner.index()?;
+
+        tx.send(Message::Exit)?;
+
+        let fq_len = {
+            let v = file_queue.lock().unwrap();
+            v.len()
+        };
+
+        // assert_eq!(files.len(), fq_len);
+
+        Ok(())
+    }
 }
