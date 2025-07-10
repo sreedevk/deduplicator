@@ -7,6 +7,7 @@ use uuid::Uuid;
 
 const PARTIAL_SIZE: u64 = 4096;
 
+#[allow(unused)]
 #[derive(Clone, Debug)]
 pub struct FileMeta {
     pub id: Uuid,

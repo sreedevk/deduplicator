@@ -4,22 +4,19 @@ use std::fs;
 use std::sync::mpsc::{self, Receiver};
 use std::sync::Arc;
 use std::sync::Mutex;
-use vfs::FileSystem;
 
-pub struct Scanner<T: FileSystem> {
+pub struct Scanner {
     files: FileQueue,
     proc_queue: FileQueue,
     msg_rx: Receiver<Message>,
-    root: Arc<T>,
 }
 
-impl<T: FileSystem> Scanner<T> {
-    pub fn new(fq: FileQueue, rx: Receiver<Message>, fsys: Arc<T>) -> Self {
+impl Scanner {
+    pub fn new(fq: FileQueue, rx: Receiver<Message>) -> Self {
         Self {
             files: fq,
             proc_queue: Arc::new(Mutex::new(vec![])),
             msg_rx: rx,
-            root: fsys,
         }
     }
 
@@ -44,22 +41,34 @@ impl<T: FileSystem> Scanner<T> {
             match npath {
                 None => continue,
                 Some(path) => {
-                    self.root.read_dir(path.as_ref())?.for_each(|entry| {
-                        let mdata = fs::metadata(&entry).expect("unable to read file metadata.");
-                        let mpath = entry.into_boxed_str();
-                        match mdata.is_dir() {
-                            true => {
-                                let mut pq =
-                                    self.proc_queue.lock().expect("proc queue lock acq failed.");
-                                pq.push(mpath);
+                    std::fs::read_dir(path.as_ref())?
+                        .filter_map(Result::ok)
+                        .for_each(|entry: fs::DirEntry| {
+                            let mdata =
+                                fs::metadata(entry.path()).expect("unable to read file metadata.");
+
+                            let mpath = entry
+                                .path()
+                                .into_os_string()
+                                .into_string()
+                                .expect("invalid path conversion failed.")
+                                .into_boxed_str();
+
+                            match mdata.is_dir() {
+                                true => {
+                                    let mut pq = self
+                                        .proc_queue
+                                        .lock()
+                                        .expect("proc queue lock acq failed.");
+                                    pq.push(mpath);
+                                }
+                                false => {
+                                    let mut fq =
+                                        self.files.lock().expect("file queue lock acq failed.");
+                                    fq.push(mpath)
+                                }
                             }
-                            false => {
-                                let mut fq =
-                                    self.files.lock().expect("file queue lock acq failed.");
-                                fq.push(mpath)
-                            }
-                        }
-                    });
+                        });
                 }
             }
         }
@@ -72,44 +81,39 @@ impl<T: FileSystem> Scanner<T> {
 mod tests {
     use super::*;
     use anyhow::Result;
+    use std::io::Write;
     use std::sync::mpsc::channel;
-    use std::thread;
-    use vfs::MemoryFS;
+    use tempfile::{tempdir, tempfile_in};
 
     #[test]
-    fn scanner_scans_files_on_vfs() -> Result<()> {
-        let files = [
-            ("hello.txt", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum"), 
-
+    fn scanner_scans_files() -> Result<()> {
+        let files = 
+            [("hello.txt", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum"), 
             ("hello_dup.txt", "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum")];
 
         let file_queue: FileQueue = Arc::new(Mutex::new(vec![]));
-        let filesystem: Arc<MemoryFS> = Arc::new(MemoryFS::new());
-        let fs_root = String::from("/root");
         let (tx, rx) = channel::<Message>();
+        let root = tempdir()?;
 
-        filesystem.create_dir(&fs_root)?;
-
-        let fs_root_box = fs_root.into_boxed_str();
-        for (filename, content) in files.into_iter() {
-            filesystem
-                .create_file(&format!("{}/{}", fs_root_box.as_ref(), filename))?
-                .write_all(content.as_bytes())?;
+        for (_filename, content) in files.into_iter() {
+            let mut tf = tempfile_in(root.path())?;
+            tf.write_all(content.as_bytes())?;
         }
 
-        let scanner = Scanner::new(file_queue.clone(), rx, filesystem);
-        tx.send(Message::AddScanDirectory(fs_root_box))?;
+        let scanner = Scanner::new(file_queue.clone(), rx);
+        let rpath = root.path().to_str().unwrap().to_string().into_boxed_str();
+
+        tx.send(Message::AddScanDirectory(rpath))?;
+        tx.send(Message::Exit)?;
 
         scanner.index()?;
-
-        tx.send(Message::Exit)?;
 
         let fq_len = {
             let v = file_queue.lock().unwrap();
             v.len()
         };
 
-        // assert_eq!(files.len(), fq_len);
+        assert_eq!(files.len(), fq_len);
 
         Ok(())
     }

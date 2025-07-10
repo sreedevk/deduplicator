@@ -1,5 +1,4 @@
-use std::collections::VecDeque;
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::channel;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};

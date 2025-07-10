@@ -1,11 +1,9 @@
-use std::collections::VecDeque;
 use std::sync::mpsc::Sender;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use ratatui::crossterm::event::{self, Event, KeyCode};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
+use ratatui::widgets::{Block, Borders, List, ListItem};
 use ratatui::{DefaultTerminal, Frame};
 
 use crate::server::{Message, Server};

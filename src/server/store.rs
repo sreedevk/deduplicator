@@ -2,6 +2,7 @@ use super::file::FileMeta;
 use dashmap::DashMap;
 use std::sync::Arc;
 
+#[allow(unused)]
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum Index {
     Size(u64),

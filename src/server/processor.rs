@@ -1,13 +1,10 @@
 use anyhow::Result;
-use std::collections::HashMap;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::{Arc, Mutex};
+use std::sync::mpsc::Receiver;
+use std::sync::Arc;
 
 use super::file::FileMeta;
 use super::store::{Index, Store};
 use super::{FileQueue, Message};
-
-const BATCH_SIZE: usize = 10;
 
 pub struct Processor {
     files: FileQueue,

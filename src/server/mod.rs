@@ -1,5 +1,4 @@
 pub mod file;
-mod flags;
 mod processor;
 mod scanner;
 mod store;
@@ -10,7 +9,6 @@ use std::sync::mpsc::channel;
 use std::sync::Arc;
 use std::sync::Mutex;
 use threadpool::ThreadPool;
-use vfs::PhysicalFS;
 
 use self::processor::Processor;
 use self::scanner::Scanner;
@@ -43,7 +41,6 @@ impl Server {
         let processor_fq = self.fq.clone();
         let processor_store = self.dupstore.clone();
         let (processor_tx, processor_rx) = channel::<Message>();
-        let (server_tx, server_rx) = channel::<Message>();
 
         self.tpool.execute(move || {
             Processor::new(processor_fq, processor_store, processor_rx)
@@ -53,9 +50,8 @@ impl Server {
 
         let scanner_fq = self.fq.clone();
         let (scanner_tx, scanner_rx) = channel::<Message>();
-        let filesystem = Arc::new(PhysicalFS::new("/"));
         self.tpool.execute(move || {
-            Scanner::new(scanner_fq, scanner_rx, filesystem)
+            Scanner::new(scanner_fq, scanner_rx)
                 .index()
                 .expect("scanner indexing interrupted.");
         });
