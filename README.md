@@ -132,3 +132,4 @@ Memory: 31731MiB (~32GiB)
     - Tree format output for duplicate file listing
     - GUI
     - Packages for different operating system repositories (currently only installable via cargo) 
+    - TUI: Improve Key Handling
