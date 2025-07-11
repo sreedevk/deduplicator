@@ -22,8 +22,8 @@ impl Store {
         }
     }
 
-    pub fn entries(&self) -> Vec<Vec<Arc<FileMeta>>> {
-        self.internal.iter().map(|k| k.value().clone()).collect()
+    pub fn entries(&self) -> Arc<DashMap<Index, Vec<Arc<FileMeta>>>> {
+        self.internal.clone()
     }
 
     pub fn add(&self, index: Index, file: Arc<FileMeta>) {

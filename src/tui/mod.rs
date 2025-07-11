@@ -59,8 +59,13 @@ impl Tui {
             .dupstore
             .entries()
             .iter()
-            .flatten()
-            .map(|f| ListItem::new(format!("{}", f.path)))
+            .flat_map(|val| {
+                let mut group = vec![ListItem::new(format!("{:?}", val.key()))];
+                val.value().iter().for_each(|f| {
+                    group.push(ListItem::new(format!("|-{}", f.path)));
+                });
+                group
+            })
             .collect::<Vec<ListItem>>();
 
         let list = List::new(listitems.clone());
@@ -75,7 +80,7 @@ impl Tui {
         );
 
         frame.render_widget(
-            Paragraph::new(format!("{:#?}", listitems)).block(Block::new().borders(Borders::ALL)),
+            Paragraph::new(String::new()).block(Block::new().borders(Borders::ALL)),
             layout_chunks[1],
         );
     }
