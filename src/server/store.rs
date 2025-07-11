@@ -10,6 +10,7 @@ pub enum Index {
     Full(Box<str>),
 }
 
+#[derive(Debug)]
 pub struct Store {
     internal: Arc<DashMap<Index, Vec<Arc<FileMeta>>>>,
 }

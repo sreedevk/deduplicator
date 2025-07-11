@@ -3,7 +3,8 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use ratatui::crossterm::event::{self, Event, KeyCode};
-use ratatui::widgets::{Block, Borders, List, ListItem};
+use ratatui::layout::{Constraint, Direction, Layout};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph};
 use ratatui::{DefaultTerminal, Frame};
 
 use crate::server::{Message, Server};
@@ -62,8 +63,21 @@ impl Tui {
             .map(|f| ListItem::new(format!("{}", f.path)))
             .collect::<Vec<ListItem>>();
 
-        let list = List::new(listitems);
-        frame.render_widget(list.block(Block::new().borders(Borders::ALL)), frame.area());
+        let list = List::new(listitems.clone());
+        let layout_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .split(frame.area());
+
+        frame.render_widget(
+            list.block(Block::new().borders(Borders::ALL)),
+            layout_chunks[0],
+        );
+
+        frame.render_widget(
+            Paragraph::new(format!("{:#?}", listitems)).block(Block::new().borders(Borders::ALL)),
+            layout_chunks[1],
+        );
     }
 
     fn run(&mut self, mut terminal: DefaultTerminal) -> Result<()> {

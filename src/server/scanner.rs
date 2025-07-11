@@ -112,7 +112,6 @@ mod tests {
             scanner.index().unwrap();
         });
 
-
         tx.send(Message::AddScanDirectory(rpath))?;
         tx.send(Message::Exit)?;
         scanner_thread.join().unwrap();
