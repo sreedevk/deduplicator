@@ -5,6 +5,7 @@ use std::sync::mpsc::{self, Receiver};
 use std::sync::Arc;
 use std::sync::Mutex;
 
+#[derive(Debug)]
 pub struct Scanner {
     files: FileQueue,
     proc_queue: FileQueue,
@@ -63,8 +64,10 @@ impl Scanner {
                                     pq.push(mpath);
                                 }
                                 false => {
-                                    let mut fq =
-                                        self.files.lock().expect("file queue lock acq failed.");
+                                    let mut fq = self
+                                        .files
+                                        .lock()
+                                        .expect("file queue lock acq failed.");
                                     fq.push(mpath)
                                 }
                             }
@@ -81,9 +84,11 @@ impl Scanner {
 mod tests {
     use super::*;
     use anyhow::Result;
+    use std::fs::File;
     use std::io::Write;
     use std::sync::mpsc::channel;
-    use tempfile::{tempdir, tempfile_in};
+    use tempfile::TempDir;
+    use std::thread;
 
     #[test]
     fn scanner_scans_files() -> Result<()> {
@@ -93,20 +98,24 @@ mod tests {
 
         let file_queue: FileQueue = Arc::new(Mutex::new(vec![]));
         let (tx, rx) = channel::<Message>();
-        let root = tempdir()?;
+        let root = TempDir::new()?;
 
-        for (_filename, content) in files.into_iter() {
-            let mut tf = tempfile_in(root.path())?;
+        for (filename, content) in files.into_iter() {
+            let mut tf = File::create(root.path().join(filename))?;
             tf.write_all(content.as_bytes())?;
         }
 
-        let scanner = Scanner::new(file_queue.clone(), rx);
         let rpath = root.path().to_str().unwrap().to_string().into_boxed_str();
+        let fq_clone = file_queue.clone();
+        let scanner_thread = thread::spawn(move || {
+            let scanner = Scanner::new(fq_clone, rx);
+            scanner.index().unwrap();
+        });
+
 
         tx.send(Message::AddScanDirectory(rpath))?;
         tx.send(Message::Exit)?;
-
-        scanner.index()?;
+        scanner_thread.join().unwrap();
 
         let fq_len = {
             let v = file_queue.lock().unwrap();
