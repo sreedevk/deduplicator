@@ -2,6 +2,7 @@
 use crate::{fileinfo::FileInfo, params::Params};
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
+use std::sync::{Arc, Mutex};
 use std::{fs, path::PathBuf, time::Duration};
 
 use globwalk::{GlobWalker, GlobWalkerBuilder};
@@ -29,60 +30,30 @@ impl Scanner {
     }
 
     pub fn build(app_args: &Params) -> Result<Self> {
-        let scan_directory = app_args.get_directory()?;
-        Ok(Scanner::new())
-            .map(|scanner| scanner.directory(scan_directory))
-            .map(|scanner| match app_args.get_min_size() {
-                Some(min_size) => scanner.min_size(min_size),
-                None => scanner,
-            })
-            .map(|scanner| match app_args.get_types() {
-                Some(ftypes) => scanner.filetypes(ftypes),
-                None => scanner,
-            })
-            .map(|scanner| match app_args.min_depth {
-                Some(min_depth) => scanner.min_depth(min_depth),
-                None => scanner,
-            })
-            .map(|scanner| match app_args.max_depth {
-                Some(max_depth) => scanner.max_depth(max_depth),
-                None => scanner,
-            })
+        let mut scanner = Scanner::new();
+        scanner.directory = Some(app_args.get_directory()?);
+
+        if let Some(min_size) = app_args.get_min_size() {
+            scanner.min_size = Some(min_size);
+        }
+
+        if app_args.get_types().is_some() {
+            scanner.filetypes = app_args.get_types();
+        }
+
+        if app_args.min_depth.is_some() {
+            scanner.min_depth = app_args.min_depth;
+        }
+
+        if app_args.max_depth.is_some() {
+            scanner.max_depth = app_args.max_depth;
+        }
+
+        Ok(scanner)
     }
 
-    pub fn min_size(&self, min_size: u64) -> Self {
-        Self {
-            min_size: Some(min_size),
-            ..self.clone()
-        }
-    }
-
-    pub fn min_depth(&self, min_depth: usize) -> Self {
-        Self {
-            min_depth: Some(min_depth),
-            ..self.clone()
-        }
-    }
-
-    pub fn max_depth(&self, max_depth: usize) -> Self {
-        Self {
-            max_depth: Some(max_depth),
-            ..self.clone()
-        }
-    }
-
-    pub fn directory(&self, dir: PathBuf) -> Self {
-        Self {
-            directory: Some(dir),
-            ..self.clone()
-        }
-    }
-
-    pub fn filetypes(&self, patterns: String) -> Self {
-        Self {
-            filetypes: Some(patterns),
-            ..self.clone()
-        }
+    pub fn filetypes(&mut self, patterns: String) {
+        self.filetypes = Some(patterns);
     }
 
     pub fn ignore_links(&self) -> Self {
@@ -144,7 +115,7 @@ impl Scanner {
         Ok(walker.build()?)
     }
 
-    pub fn scan(&self) -> Result<Vec<FileInfo>> {
+    pub fn scan(&self, files: Arc<Mutex<Vec<FileInfo>>>) -> Result<()> {
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
@@ -152,8 +123,7 @@ impl Scanner {
         progress_bar.set_message("paths mapped");
         let min_size = self.min_size.unwrap_or_default();
 
-        let results = self
-            .build_walker()?
+        self.build_walker()?
             .filter_map(Result::ok)
             .map(|entity| entity.into_path())
             .inspect(|_path| progress_bar.inc(1))
@@ -161,10 +131,12 @@ impl Scanner {
             .map(FileInfo::new)
             .filter_map(Result::ok)
             .filter(|file| file.size > min_size)
-            .collect::<Vec<FileInfo>>();
+            .for_each(|file| {
+                let mut flock = files.lock().unwrap();
+                flock.push(file);
+            });
 
         progress_bar.finish_with_message("paths mapped");
-
-        Ok(results)
+        Ok(())
     }
 }
