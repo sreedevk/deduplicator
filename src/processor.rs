@@ -8,11 +8,13 @@ use std::sync::{Arc, Mutex, TryLockError, TryLockResult};
 use std::time::Duration;
 
 use crate::fileinfo::FileInfo;
+use crate::params::Params;
 
 pub struct Processor {}
 
 impl Processor {
     pub fn hashwise(
+        app_args: Arc<Params>,
         sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
         hw_store: Arc<DashMap<String, Vec<FileInfo>>>,
     ) -> Result<()> {
@@ -32,8 +34,14 @@ impl Processor {
                 let group: Vec<FileInfo> = sw_store.get(&key).unwrap().to_vec();
                 if group.len() > 1 {
                     group.into_par_iter().for_each(|file| {
+                        let fhash = if app_args.strict {
+                            file.hash().expect("hashing file failed.")
+                        } else {
+                            file.initial_page_hash().expect("hashing file failed.")
+                        };
+
                         hw_store
-                            .entry(file.hash().expect("hashing file failed."))
+                            .entry(fhash)
                             .and_modify(|fileset| fileset.push(file.clone()))
                             .or_insert_with(|| vec![file]);
                     });
@@ -51,7 +59,6 @@ impl Processor {
         Ok(())
     }
 
-    // TODO: reduce the amount of time files remain locked for
     pub fn sizewise(
         scanner_finished: Arc<AtomicBool>,
         store: Arc<DashMap<u64, Vec<FileInfo>>>,
@@ -65,32 +72,31 @@ impl Processor {
         progress_bar.set_message("files grouped by size");
 
         loop {
-            match files.try_lock() {
-                Ok(mut flist) => match flist.pop() {
-                    Some(file) => {
-                        progress_bar.inc(1);
-                        Self::compare_and_update_max_path_len(
-                            max_file_size.clone(),
-                            file.path.to_string_lossy().len() as u64,
-                        )?;
-                        store
-                            .entry(file.size)
-                            .and_modify(|fileset| fileset.push(file.clone()))
-                            .or_insert_with(|| vec![file]);
-                        continue;
-                    }
-                    None => match scanner_finished.load(std::sync::atomic::Ordering::Relaxed) {
-                        true => break Ok(()),
-                        false => continue,
-                    },
-                },
-                TryLockResult::Err(TryLockError::WouldBlock) => continue,
-                _ => {
-                    break {
-                        progress_bar.finish_with_message("files grouped by size.");
-                        Ok(())
-                    }
+            let fileopt: Option<FileInfo> = {
+                match files.try_lock() {
+                    Ok(mut flist) => flist.pop(),
+                    TryLockResult::Err(TryLockError::WouldBlock) => None,
+                    _ => None,
                 }
+            };
+
+            match fileopt {
+                Some(file) => {
+                    progress_bar.inc(1);
+                    Self::compare_and_update_max_path_len(
+                        max_file_size.clone(),
+                        file.path.to_string_lossy().len() as u64,
+                    )?;
+                    store
+                        .entry(file.size)
+                        .and_modify(|fileset| fileset.push(file.clone()))
+                        .or_insert_with(|| vec![file]);
+                    continue;
+                }
+                None => match scanner_finished.load(std::sync::atomic::Ordering::Relaxed) {
+                    true => break Ok(()),
+                    false => continue,
+                },
             }
         }
     }

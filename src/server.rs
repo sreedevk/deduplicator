@@ -25,14 +25,15 @@ impl Server {
             filequeue: Arc::new(Mutex::new(Vec::new())),
             sw_duplicate_set: Arc::new(DashMap::new()),
             hw_duplicate_set: Arc::new(DashMap::new()),
-            threadpool: ThreadPool::new(8),
+            threadpool: ThreadPool::new(4),
             app_args: Arc::new(opts),
             max_file_path_len: Arc::new(AtomicU64::new(0)),
         }
     }
 
     pub fn start(&self) -> Result<()> {
-        let app_args_clone = self.app_args.clone();
+        let app_args_clone_for_sc = self.app_args.clone();
+        let app_args_clone_for_pr = self.app_args.clone();
         let file_queue_clone_sc = self.filequeue.clone();
         let file_queue_clone_pr = self.filequeue.clone();
         let scanner_finished = Arc::new(AtomicBool::new(false));
@@ -46,7 +47,7 @@ impl Server {
         let max_file_path_len_clone = self.max_file_path_len.clone();
 
         self.threadpool.execute(move || {
-            Scanner::build(app_args_clone)
+            Scanner::build(app_args_clone_for_sc)
                 .unwrap()
                 .scan(file_queue_clone_sc)
                 .unwrap();
@@ -63,7 +64,8 @@ impl Server {
             )
             .unwrap();
 
-            Processor::hashwise(store_dupl_sw_for_hw, store_dupl_hw).unwrap();
+            Processor::hashwise(app_args_clone_for_pr, store_dupl_sw_for_hw, store_dupl_hw)
+                .unwrap();
         });
 
         self.threadpool.join();

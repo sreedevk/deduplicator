@@ -30,6 +30,9 @@ pub struct Params {
     /// print json output
     #[arg(long)]
     pub json: bool,
+    /// Guarantees that two files are duplicate (performs a full hash)
+    #[arg(long, short = 'f', default_value = "false")]
+    pub strict: bool,
 }
 
 impl Params {
