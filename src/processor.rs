@@ -101,3 +101,58 @@ impl Processor {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use dashmap::DashMap;
+    use rand::Rng;
+    use std::fs::File;
+    use std::io::Write;
+    use std::sync::atomic::{AtomicBool, AtomicU64};
+    use std::sync::{Arc, Mutex};
+    use tempfile::TempDir;
+
+    use crate::fileinfo::FileInfo;
+
+    use super::Processor;
+
+    fn generate_bytes(size: usize) -> Vec<u8> {
+        let mut rng = rand::rng();
+        (0..size).map(|_| rng.random::<u8>()).collect::<Vec<u8>>()
+    }
+
+    #[test]
+    fn sizewise_sorting_normal() -> Result<()> {
+        let root = TempDir::new()?;
+        let files = [
+            (root.path().join("fileone.bin"), generate_bytes(80)),
+            (root.path().join("filetwo.bin"), generate_bytes(120)),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let dupstore = Arc::new(DashMap::new());
+
+        Processor::sizewise(
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(AtomicU64::new(0)),
+        )?;
+
+        assert_eq!(dupstore.len(), 2);
+
+        Ok(())
+    }
+}

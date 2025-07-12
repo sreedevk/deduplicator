@@ -138,3 +138,4 @@ Memory: 31731MiB (~32GiB)
 - [x] add a partial hashing mode (--strict)
 - [ ] add an option to use a bloom filter for very large filesystems
 - [ ] max file path size should use the last set of duplicates
+- [ ] add unit tests
