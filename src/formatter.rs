@@ -5,7 +5,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use indicatif::{
-    ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressIterator, ProgressStyle,
+    ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle,
 };
 use pathdiff::diff_paths;
 use prettytable::{format, row, Row, Table};
@@ -22,7 +22,7 @@ impl Formatter {
         min_path_length: usize,
     ) -> Result<String> {
         let base_directory: PathBuf = app_args.get_directory()?;
-        let relative_path = diff_paths(file.path.clone(), base_directory).unwrap_or_default();
+        let relative_path = diff_paths(&file.path, base_directory).unwrap_or_default();
 
         let formatted_path = format!(
             "{:<0width$}",

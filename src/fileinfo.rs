@@ -1,23 +1,21 @@
 use anyhow::Result;
 use gxhash::GxHasher;
 use memmap2::Mmap;
-use serde::Serialize;
 use std::fs;
 use std::hash::Hasher;
 use std::io::Read;
 use std::{fs::Metadata, path::PathBuf};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct FileInfo {
     pub path: PathBuf,
     pub size: u64,
-    #[serde(skip)]
     pub filemeta: Metadata,
 }
 
 impl FileInfo {
     pub fn hash(&self) -> Result<String> {
-        let file = fs::File::open(self.path.clone())?;
+        let file = fs::File::open(&self.path)?;
         let mapper = unsafe { Mmap::map(&file)? };
         let mut primhasher = GxHasher::default();
 
@@ -29,7 +27,7 @@ impl FileInfo {
     }
 
     pub fn initial_page_hash(&self) -> Result<String> {
-        let file = fs::File::open(self.path.clone())?;
+        let file = fs::File::open(&self.path)?;
         let mapper = unsafe { Mmap::map(&file)? };
         let mut primhasher = GxHasher::default();
         primhasher.write(mapper.take(4096).into_inner());
@@ -38,7 +36,7 @@ impl FileInfo {
     }
 
     pub fn new(path: PathBuf) -> Result<Self> {
-        let filemeta = std::fs::metadata(path.clone())?;
+        let filemeta = std::fs::metadata(&path)?;
         Ok(Self {
             path,
             filemeta: filemeta.clone(),

@@ -21,7 +21,6 @@ Options:
   -f, --follow-links           Follow links while scanning directories
   -h, --help                   Print help information
   -V, --version                Print version information
-      --json                    
 ```
 ### Examples
 
@@ -136,6 +135,6 @@ Memory: 31731MiB (~32GiB)
 ## v0.3 checklist
 - [x] parallelization of scanning, processing and formatting
 - [x] reduce cloning values on the heap
-- [ ] add a partial hashing mode
+- [x] add a partial hashing mode (--strict)
 - [ ] add an option to use a bloom filter for very large filesystems
 - [ ] max file path size should use the last set of duplicates

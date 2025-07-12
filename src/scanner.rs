@@ -7,7 +7,6 @@ use std::{fs, path::PathBuf, time::Duration};
 
 use globwalk::{GlobWalker, GlobWalkerBuilder};
 
-#[derive(Debug, Clone)]
 pub struct Scanner {
     pub directory: Option<PathBuf>,
     pub filetypes: Option<String>,
@@ -49,37 +48,22 @@ impl Scanner {
             scanner.max_depth = app_args.max_depth;
         }
 
+        // TODO: Add option to disable follow links from cli app args
+        // scanner.follow_links = false;
+
         Ok(scanner)
     }
 
-    pub fn filetypes(&mut self, patterns: String) {
-        self.filetypes = Some(patterns);
-    }
-
-    pub fn ignore_links(&self) -> Self {
-        Self {
-            follow_links: false,
-            ..self.clone()
-        }
-    }
-
-    pub fn follow_links(&self) -> Self {
-        Self {
-            follow_links: true,
-            ..self.clone()
-        }
-    }
-
     fn scan_patterns(&self) -> Result<String> {
-        Ok(match self.filetypes.clone() {
+        Ok(match &self.filetypes {
             Some(ftypes) => format!("**/*{{{ftypes}}}"),
             None => "**/*".to_string(),
         })
     }
 
     fn scan_dir(&self) -> Result<PathBuf> {
-        let scan_dir = match self.directory.clone() {
-            Some(path) => path,
+        let scan_dir = match &self.directory {
+            Some(path) => path.clone(),
             None => std::env::current_dir()?,
         };
 

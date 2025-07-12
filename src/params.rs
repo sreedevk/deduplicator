@@ -27,9 +27,6 @@ pub struct Params {
     /// Follow links while scanning directories
     #[arg(long, short)]
     pub follow_links: bool,
-    /// print json output
-    #[arg(long)]
-    pub json: bool,
     /// Guarantees that two files are duplicate (performs a full hash)
     #[arg(long, short = 'f', default_value = "false")]
     pub strict: bool,

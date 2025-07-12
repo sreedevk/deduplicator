@@ -51,7 +51,7 @@ pub fn init(result: Arc<DashMap<String, Vec<FileInfo>>>, app_args: &Params) -> R
             ]);
         });
 
-        process_group_action(&group, gindex, result.len(), itable);
+        process_group_action(group, gindex, result.len(), itable);
     });
 
     Ok(())
