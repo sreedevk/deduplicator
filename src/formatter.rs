@@ -4,9 +4,12 @@ use crate::params::Params;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
-use indicatif::{ProgressBar, ProgressFinish, ProgressIterator, ProgressStyle};
+use indicatif::{
+    ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressIterator, ProgressStyle,
+};
 use pathdiff::diff_paths;
-use prettytable::{format, row, Table};
+use prettytable::{format, row, Row, Table};
+use rayon::prelude::*;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -47,19 +50,17 @@ impl Formatter {
         let mut output_table = Table::new();
         output_table.set_titles(row!["hash", "duplicates"]);
 
-        let progress_style = ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
-        )?;
-
-        let progress_bar = ProgressBar::new(raw.len() as u64);
+        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
+        let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("generating output");
 
-        raw.iter()
+        let rows = raw
+            .par_iter_mut()
             .progress_with(progress_bar)
             .with_finish(ProgressFinish::WithMessage(Cow::from("output generated")))
-            .for_each(|i| {
+            .map(|i| {
                 let mut inner_table = Table::new();
                 inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
                 i.value().iter().for_each(|file| {
@@ -70,9 +71,11 @@ impl Formatter {
                     ]);
                 });
 
-                output_table.add_row(row![i.key(), inner_table]);
-            });
+                row![i.key(), inner_table]
+            })
+            .collect::<Vec<Row>>();
 
+        output_table.extend(rows);
         Ok(output_table)
     }
 
