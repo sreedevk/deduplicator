@@ -29,7 +29,7 @@ impl Scanner {
         }
     }
 
-    pub fn build(app_args: &Params) -> Result<Self> {
+    pub fn build(app_args: Arc<Params>) -> Result<Self> {
         let mut scanner = Scanner::new();
         scanner.directory = Some(app_args.get_directory()?);
 

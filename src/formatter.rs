@@ -9,6 +9,7 @@ use pathdiff::diff_paths;
 use prettytable::{format, row, Table};
 use std::borrow::Cow;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 impl Formatter {
@@ -38,7 +39,11 @@ impl Formatter {
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
 
-    pub fn generate_table(raw: DashMap<String, Vec<FileInfo>>, max_path_len: usize, app_args: &Params) -> Result<Table> {
+    pub fn generate_table(
+        raw: Arc<DashMap<String, Vec<FileInfo>>>,
+        max_path_len: u64,
+        app_args: &Params,
+    ) -> Result<Table> {
         let mut output_table = Table::new();
         output_table.set_titles(row!["hash", "duplicates"]);
 
@@ -51,27 +56,31 @@ impl Formatter {
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("generating output");
 
-        raw.into_iter()
+        raw.iter()
             .progress_with(progress_bar)
             .with_finish(ProgressFinish::WithMessage(Cow::from("output generated")))
-            .for_each(|(hash, group)| {
+            .for_each(|i| {
                 let mut inner_table = Table::new();
                 inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-                group.iter().for_each(|file| {
+                i.value().iter().for_each(|file| {
                     inner_table.add_row(row![
-                        Self::human_path(file, app_args, max_path_len).unwrap_or_default(),
+                        Self::human_path(file, app_args, max_path_len as usize).unwrap_or_default(),
                         Self::human_filesize(file).unwrap_or_default(),
                         Self::human_mtime(file).unwrap_or_default()
                     ]);
                 });
 
-                output_table.add_row(row![hash, inner_table]);
+                output_table.add_row(row![i.key(), inner_table]);
             });
 
         Ok(output_table)
     }
 
-    pub fn print(raw: DashMap<String, Vec<FileInfo>>, max_path_len: usize, app_args: &Params) -> Result<()> {
+    pub fn print(
+        raw: Arc<DashMap<String, Vec<FileInfo>>>,
+        max_path_len: u64,
+        app_args: &Params,
+    ) -> Result<()> {
         if raw.is_empty() {
             println!("\n\nNo duplicates found matching your search criteria.\n");
             return Ok(());

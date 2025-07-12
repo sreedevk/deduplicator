@@ -4,6 +4,7 @@ use anyhow::Result;
 use dashmap::DashMap;
 use prettytable::{format, row, Table};
 use std::io::{self, Write};
+use std::sync::Arc;
 
 pub fn scan_group_confirmation() -> Result<bool> {
     print!("\nconfirm? [y/N]: ");
@@ -29,32 +30,29 @@ pub fn scan_group_instruction() -> Result<String> {
     Ok(user_input)
 }
 
-pub fn init(result: DashMap<String, Vec<FileInfo>>, app_args: &Params) -> Result<()> {
-    result
-        .clone()
-        .into_iter()
-        .enumerate()
-        .for_each(|(gindex, (_, group))| {
-            let mut itable = Table::new();
-            itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-            itable.set_titles(row!["index", "filename", "size", "updated_at"]);
-            let max_path_size = group
-                .iter()
-                .map(|f| f.path.clone().into_os_string().len())
-                .max()
-                .unwrap_or_default();
+pub fn init(result: Arc<DashMap<String, Vec<FileInfo>>>, app_args: &Params) -> Result<()> {
+    result.clone().iter().enumerate().for_each(|(gindex, i)| {
+        let group = i.value();
+        let mut itable = Table::new();
+        itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+        itable.set_titles(row!["index", "filename", "size", "updated_at"]);
+        let max_path_size = group
+            .iter()
+            .map(|f| f.path.clone().into_os_string().len())
+            .max()
+            .unwrap_or_default();
 
-            group.iter().enumerate().for_each(|(index, file)| {
-                itable.add_row(row![
-                    index,
-                    Formatter::human_path(file, app_args, max_path_size).unwrap_or_default(),
-                    Formatter::human_filesize(file).unwrap_or_default(),
-                    Formatter::human_mtime(file).unwrap_or_default()
-                ]);
-            });
-
-            process_group_action(&group, gindex, result.len(), itable);
+        group.iter().enumerate().for_each(|(index, file)| {
+            itable.add_row(row![
+                index,
+                Formatter::human_path(file, app_args, max_path_size).unwrap_or_default(),
+                Formatter::human_filesize(file).unwrap_or_default(),
+                Formatter::human_mtime(file).unwrap_or_default()
+            ]);
         });
+
+        process_group_action(&group, gindex, result.len(), itable);
+    });
 
     Ok(())
 }
