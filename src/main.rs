@@ -15,16 +15,16 @@ use scanner::Scanner;
 fn main() -> Result<()> {
     let app_args = Params::parse();
     let scan_results = Scanner::build(&app_args)?.scan()?;
-    let processor = Processor::new(scan_results);
-    let results = processor.sizewise()?.hashwise()?;
+    let mut processor = Processor::new(scan_results);
+
+    processor.sizewise()?;
+    processor.hashwise()?;
+
+    let results = processor.hashwise_results;
 
     match app_args.interactive {
-        false => {
-            Formatter::print(results.files, &app_args)?;
-        }
-        true => {
-            interactive::init(results.files, &app_args)?;
-        }
+        false => Formatter::print(results, processor.max_path_len, &app_args)?,
+        true => interactive::init(results, &app_args)?,
     }
 
     Ok(())

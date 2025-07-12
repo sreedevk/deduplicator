@@ -156,10 +156,7 @@ impl Scanner {
             .build_walker()?
             .filter_map(Result::ok)
             .map(|entity| entity.into_path())
-            .map(|path| {
-                progress_bar.inc(1);
-                path
-            })
+            .inspect(|_path| progress_bar.inc(1))
             .filter(|path| path.is_file())
             .map(FileInfo::new)
             .filter_map(Result::ok)
