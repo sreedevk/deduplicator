@@ -33,7 +33,7 @@ impl Processor {
                 if group.len() > 1 {
                     group.into_par_iter().for_each(|file| {
                         hw_store
-                            .entry(file.hash.clone().unwrap_or_default())
+                            .entry(file.hash().expect("hashing file failed."))
                             .and_modify(|fileset| fileset.push(file.clone()))
                             .or_insert_with(|| vec![file]);
                     });

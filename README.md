@@ -132,3 +132,10 @@ Memory: 31731MiB (~32GiB)
     - Tree format output for duplicate file listing
     - GUI
     - Packages for different operating system repositories (currently only installable via cargo) 
+
+## v0.3 checklist
+- [x] parallelization of scanning, processing and formatting
+- [x] reduce cloning values on the heap
+- [ ] add a partial hashing mode
+- [ ] add an option to use a bloom filter for very large filesystems
+- [ ] max file path size should use the last set of duplicates
