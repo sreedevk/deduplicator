@@ -1,6 +1,8 @@
 use anyhow::Result;
 use dashmap::DashMap;
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle};
+use indicatif::{
+    MultiProgress, ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle,
+};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -17,9 +19,10 @@ impl Processor {
         app_args: Arc<Params>,
         sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
         hw_store: Arc<DashMap<String, Vec<FileInfo>>>,
+        progress_bar_box: Arc<MultiProgress>,
     ) -> Result<()> {
         let progress_bar = match app_args.progress {
-            true => ProgressBar::new_spinner(),
+            true => progress_bar_box.add(ProgressBar::new_spinner()),
             false => ProgressBar::hidden(),
         };
 
@@ -69,9 +72,10 @@ impl Processor {
         store: Arc<DashMap<u64, Vec<FileInfo>>>,
         files: Arc<Mutex<Vec<FileInfo>>>,
         max_file_size: Arc<AtomicU64>,
+        progress_bar_box: Arc<MultiProgress>,
     ) -> Result<()> {
         let progress_bar = match app_args.progress {
-            true => ProgressBar::new_spinner(),
+            true => progress_bar_box.add(ProgressBar::new_spinner()),
             false => ProgressBar::hidden(),
         };
 
@@ -118,6 +122,7 @@ impl Processor {
 mod tests {
     use anyhow::Result;
     use dashmap::DashMap;
+    use indicatif::MultiProgress;
     use rand::Rng;
     use std::fs::File;
     use std::io::Write;
@@ -162,6 +167,7 @@ mod tests {
             dupstore.clone(),
             file_queue,
             Arc::new(AtomicU64::new(0)),
+            Arc::new(MultiProgress::new()),
         )?;
 
         assert_eq!(dupstore.len(), 2);

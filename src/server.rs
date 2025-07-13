@@ -5,6 +5,7 @@ use crate::processor::Processor;
 use crate::scanner::Scanner;
 use anyhow::Result;
 use dashmap::DashMap;
+use indicatif::MultiProgress;
 use threadpool::ThreadPool;
 
 use crate::fileinfo::FileInfo;
@@ -32,6 +33,8 @@ impl Server {
     }
 
     pub fn start(&self) -> Result<()> {
+        let progbarbox = Arc::new(MultiProgress::new());
+
         let app_args_clone_for_sc = self.app_args.clone();
         let app_args_clone_for_pr = self.app_args.clone();
         let file_queue_clone_sc = self.filequeue.clone();
@@ -46,14 +49,18 @@ impl Server {
         let store_dupl_hw = self.hw_duplicate_set.clone();
         let max_file_path_len_clone = self.max_file_path_len.clone();
 
+        let progbarbox_sc_clone = progbarbox.clone();
+
         self.threadpool.execute(move || {
             Scanner::build(app_args_clone_for_sc)
                 .unwrap()
-                .scan(file_queue_clone_sc)
+                .scan(file_queue_clone_sc, progbarbox_sc_clone)
                 .unwrap();
 
             sfin_sc_tr_cl.store(true, std::sync::atomic::Ordering::Relaxed);
         });
+
+        let progbarbox_pr_clone = progbarbox.clone();
 
         self.threadpool.execute(move || {
             Processor::sizewise(
@@ -62,11 +69,17 @@ impl Server {
                 store_dupl_sw_for_sw,
                 file_queue_clone_pr,
                 max_file_path_len_clone,
+                progbarbox_pr_clone.clone(),
             )
             .unwrap();
 
-            Processor::hashwise(app_args_clone_for_pr, store_dupl_sw_for_hw, store_dupl_hw)
-                .unwrap();
+            Processor::hashwise(
+                app_args_clone_for_pr,
+                store_dupl_sw_for_hw,
+                store_dupl_hw,
+                progbarbox_pr_clone,
+            )
+            .unwrap();
         });
 
         self.threadpool.join();

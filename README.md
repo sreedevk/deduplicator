@@ -133,3 +133,5 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
 - [ ] restore json output
 - [ ] update documentation
 - [x] remove color output
+- [ ] progress bar improvements
+    - [ ] use progress bar groups

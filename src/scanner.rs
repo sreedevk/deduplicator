@@ -1,7 +1,7 @@
 #![allow(unused)]
 use crate::{fileinfo::FileInfo, params::Params};
 use anyhow::Result;
-use indicatif::{ProgressBar, ProgressStyle};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::sync::{Arc, Mutex};
 use std::{fs, path::PathBuf, time::Duration};
 
@@ -102,11 +102,16 @@ impl Scanner {
         Ok(walker.build()?)
     }
 
-    pub fn scan(&self, files: Arc<Mutex<Vec<FileInfo>>>) -> Result<()> {
+    pub fn scan(
+        &self,
+        files: Arc<Mutex<Vec<FileInfo>>>,
+        progress_bar_box: Arc<MultiProgress>,
+    ) -> Result<()> {
         let progress_bar = match self.progress {
-            true => ProgressBar::new_spinner(),
+            true => progress_bar_box.add(ProgressBar::new_spinner()),
             false => ProgressBar::hidden(),
         };
+
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
