@@ -27,6 +27,7 @@ impl Processor {
         };
 
         let keys: Vec<u64> = sw_store.clone().iter().map(|i| *i.key()).collect();
+
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));

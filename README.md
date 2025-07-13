@@ -126,7 +126,6 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
     - [ ] scanning + processing sw + processing hw + formatting + printing
 - [x] reduce cloning values on the heap
 - [x] add a partial hashing mode (--strict)
-- [ ] add an option to use a bloom filter for very large filesystems
 - [ ] max file path size should use the last set of duplicates
 - [-] add unit tests
 - [x] add silent mode
@@ -135,3 +134,6 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
 - [x] remove color output
 - [ ] progress bar improvements
     - [ ] use progress bar groups
+- [ ] fix memory leak on very large filesystems
+    - [ ] maybe use a bloom filter
+    - [ ] reduce FileInfo size

@@ -5,7 +5,7 @@ use crate::processor::Processor;
 use crate::scanner::Scanner;
 use anyhow::Result;
 use dashmap::DashMap;
-use indicatif::MultiProgress;
+use indicatif::{MultiProgress, ProgressDrawTarget};
 use threadpool::ThreadPool;
 
 use crate::fileinfo::FileInfo;
@@ -34,6 +34,10 @@ impl Server {
 
     pub fn start(&self) -> Result<()> {
         let progbarbox = Arc::new(MultiProgress::new());
+
+        if !self.app_args.progress {
+            progbarbox.set_draw_target(ProgressDrawTarget::hidden());
+        }
 
         let app_args_clone_for_sc = self.app_args.clone();
         let app_args_clone_for_pr = self.app_args.clone();
@@ -81,6 +85,8 @@ impl Server {
             )
             .unwrap();
         });
+
+        progbarbox.clear()?;
 
         self.threadpool.join();
 
