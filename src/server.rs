@@ -72,7 +72,6 @@ impl Server {
                 sfin_pr_tr_cl,
                 store_dupl_sw_for_sw,
                 file_queue_clone_pr,
-                max_file_path_len_clone,
                 progbarbox_pr_clone.clone(),
             )
             .unwrap();
@@ -82,6 +81,7 @@ impl Server {
                 store_dupl_sw_for_hw,
                 store_dupl_hw,
                 progbarbox_pr_clone,
+                max_file_path_len_clone,
             )
             .unwrap();
         });

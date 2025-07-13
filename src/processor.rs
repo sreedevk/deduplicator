@@ -20,6 +20,7 @@ impl Processor {
         sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
         hw_store: Arc<DashMap<String, Vec<FileInfo>>>,
         progress_bar_box: Arc<MultiProgress>,
+        max_file_size: Arc<AtomicU64>,
     ) -> Result<()> {
         let progress_bar = match app_args.progress {
             true => progress_bar_box.add(ProgressBar::new_spinner()),
@@ -48,6 +49,12 @@ impl Processor {
                             file.initial_page_hash().expect("hashing file failed.")
                         };
 
+                        Self::compare_and_update_max_path_len(
+                            max_file_size.clone(),
+                            file.path.to_string_lossy().len() as u64,
+                        )
+                        .unwrap();
+
                         hw_store
                             .entry(fhash)
                             .and_modify(|fileset| fileset.push(file.clone()))
@@ -72,7 +79,6 @@ impl Processor {
         scanner_finished: Arc<AtomicBool>,
         store: Arc<DashMap<u64, Vec<FileInfo>>>,
         files: Arc<Mutex<Vec<FileInfo>>>,
-        max_file_size: Arc<AtomicU64>,
         progress_bar_box: Arc<MultiProgress>,
     ) -> Result<()> {
         let progress_bar = match app_args.progress {
@@ -97,10 +103,6 @@ impl Processor {
             match fileopt {
                 Some(file) => {
                     progress_bar.inc(1);
-                    Self::compare_and_update_max_path_len(
-                        max_file_size.clone(),
-                        file.path.to_string_lossy().len() as u64,
-                    )?;
                     store
                         .entry(file.size)
                         .and_modify(|fileset| fileset.push(file.clone()))

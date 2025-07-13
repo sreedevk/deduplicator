@@ -16,6 +16,7 @@ impl Interactive {
             let mut itable = Table::new();
             itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
             itable.set_titles(row!["index", "filename", "size", "updated_at"]);
+
             let max_path_size = group
                 .iter()
                 .map(|f| f.path.iter().count())
