@@ -45,6 +45,11 @@ deduplicator ~/.config --follow-links
 deduplicator ~/Media --min-size 100mb
 ```
 
+## Demo
+![record](https://github.com/user-attachments/assets/fcfdd9bf-4d05-41b6-a82e-367634eeaa73)
+
+
+
 ## Installation
 Currently, you can only install deduplicator using cargo package manager.
 
