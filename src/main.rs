@@ -6,7 +6,7 @@ mod processor;
 mod scanner;
 mod server;
 
-use self::{formatter::Formatter, server::Server};
+use self::{formatter::Formatter, interactive::Interactive, server::Server};
 use anyhow::Result;
 use clap::Parser;
 use params::Params;
@@ -27,7 +27,7 @@ fn main() -> Result<()> {
             )?;
         }
         true => {
-            interactive::init(server.hw_duplicate_set, &app_args)?;
+            Interactive::init(server.hw_duplicate_set, &app_args)?;
         }
     };
 
