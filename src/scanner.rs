@@ -1,15 +1,13 @@
-#![allow(unused)]
 use crate::{fileinfo::FileInfo, params::Params};
 use anyhow::Result;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::sync::{Arc, Mutex};
-use std::{fs, path::Path, time::Duration};
+use std::{path::Path, time::Duration};
 
 use globwalk::{GlobWalker, GlobWalkerBuilder};
 
 pub struct Scanner {
     pub directory: Box<Path>,
-    pub app_args: Arc<Params>,
     pub filetypes: Option<String>,
     pub min_depth: Option<usize>,
     pub max_depth: Option<usize>,
@@ -28,7 +26,6 @@ impl Scanner {
             min_size: app_args.get_min_size(),
             follow_links: app_args.follow_links,
             progress: app_args.progress,
-            app_args,
         })
     }
 

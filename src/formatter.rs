@@ -68,6 +68,7 @@ impl Formatter {
             .par_iter_mut()
             .progress_with(progress_bar)
             .with_finish(ProgressFinish::WithMessage(Cow::from("output generated")))
+            .filter(|i| i.value().len() > 1)
             .map(|i| {
                 row![
                     i.key(),

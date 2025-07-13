@@ -11,29 +11,34 @@ pub struct Interactive;
 
 impl Interactive {
     pub fn init(result: Arc<DashMap<u128, Vec<FileInfo>>>, app_args: &Params) -> Result<()> {
-        result.clone().iter().enumerate().for_each(|(gindex, i)| {
-            let group = i.value();
-            let mut itable = Table::new();
-            itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-            itable.set_titles(row!["index", "filename", "size", "updated_at"]);
+        result
+            .clone()
+            .iter()
+            .filter(|i| i.value().len() > 1)
+            .enumerate()
+            .for_each(|(gindex, i)| {
+                let group = i.value();
+                let mut itable = Table::new();
+                itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+                itable.set_titles(row!["index", "filename", "size", "updated_at"]);
 
-            let max_path_size = group
-                .iter()
-                .map(|f| f.path.iter().count())
-                .max()
-                .unwrap_or_default();
+                let max_path_size = group
+                    .iter()
+                    .map(|f| f.path.iter().count())
+                    .max()
+                    .unwrap_or_default();
 
-            group.iter().enumerate().for_each(|(index, file)| {
-                itable.add_row(row![
-                    index,
-                    Formatter::human_path(file, app_args, max_path_size).unwrap_or_default(),
-                    Formatter::human_filesize(file).unwrap_or_default(),
-                    Formatter::human_mtime(file).unwrap_or_default()
-                ]);
+                group.iter().enumerate().for_each(|(index, file)| {
+                    itable.add_row(row![
+                        index,
+                        Formatter::human_path(file, app_args, max_path_size).unwrap_or_default(),
+                        Formatter::human_filesize(file).unwrap_or_default(),
+                        Formatter::human_mtime(file).unwrap_or_default()
+                    ]);
+                });
+
+                Self::process_group_action(group, gindex, result.len(), itable);
             });
-
-            Self::process_group_action(group, gindex, result.len(), itable);
-        });
 
         Ok(())
     }

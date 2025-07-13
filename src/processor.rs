@@ -130,7 +130,7 @@ mod tests {
     use rand::Rng;
     use std::fs::File;
     use std::io::Write;
-    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::{AtomicBool, AtomicU64};
     use std::sync::{Arc, Mutex};
     use tempfile::TempDir;
 
@@ -144,11 +144,165 @@ mod tests {
     }
 
     #[test]
-    fn sizewise_sorting_normal() -> Result<()> {
+    fn hashwise_sorting_two_files_with_identical_init_page_only_strict_mode() -> Result<()> {
+        let root = TempDir::new()?;
+        let content = generate_bytes(4096);
+
+        let mut content_x = content.clone();
+        let mut content_y = content.clone();
+
+        content_x.extend(generate_bytes(1720320));
+        content_y.extend(generate_bytes(1720320));
+
+        let files = [
+            (root.path().join("fileone.bin"), content_x),
+            (root.path().join("filetwo.bin"), content_y),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let dupstore = Arc::new(DashMap::new());
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let hw_dupstore = Arc::new(DashMap::new());
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        let args = Params {
+            strict: true,
+            ..Default::default()
+        };
+
+        Processor::hashwise(
+            Arc::new(args),
+            dupstore.clone(),
+            hw_dupstore.clone(),
+            Arc::new(MultiProgress::new()),
+            Arc::new(AtomicU64::new(32)),
+            300,
+        )?;
+
+        assert_eq!(hw_dupstore.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn hashwise_sorting_two_files_with_identical_init_page_only_fast_mode() -> Result<()> {
+        let root = TempDir::new()?;
+        let content = generate_bytes(4096);
+
+        let mut content_x = content.clone();
+        let mut content_y = content.clone();
+
+        content_x.extend(generate_bytes(1720320));
+        content_y.extend(generate_bytes(1720320));
+
+        let files = [
+            (root.path().join("fileone.bin"), content_x),
+            (root.path().join("filetwo.bin"), content_y),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let dupstore = Arc::new(DashMap::new());
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let hw_dupstore = Arc::new(DashMap::new());
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        Processor::hashwise(
+            Arc::new(Params::default()),
+            dupstore.clone(),
+            hw_dupstore.clone(),
+            Arc::new(MultiProgress::new()),
+            Arc::new(AtomicU64::new(32)),
+            300,
+        )?;
+
+        assert_eq!(hw_dupstore.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn hashwise_sorting_two_files_with_identical_data() -> Result<()> {
+        let root = TempDir::new()?;
+        let content = generate_bytes(282624);
+        let files = [
+            (root.path().join("fileone.bin"), content.clone()),
+            (root.path().join("filetwo.bin"), content.clone()),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let dupstore = Arc::new(DashMap::new());
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let hw_dupstore = Arc::new(DashMap::new());
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        Processor::hashwise(
+            Arc::new(Params::default()),
+            dupstore.clone(),
+            hw_dupstore.clone(),
+            Arc::new(MultiProgress::new()),
+            Arc::new(AtomicU64::new(32)),
+            300,
+        )?;
+
+        assert_eq!(hw_dupstore.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn sizewise_sorting_two_files_of_different_sizes() -> Result<()> {
         let root = TempDir::new()?;
         let files = [
-            (root.path().join("fileone.bin"), generate_bytes(80)),
-            (root.path().join("filetwo.bin"), generate_bytes(120)),
+            (root.path().join("fileone.bin"), generate_bytes(282624)),
+            (root.path().join("filetwo.bin"), generate_bytes(1720320)),
         ];
 
         for (fpath, content) in files.iter() {
@@ -174,6 +328,41 @@ mod tests {
         )?;
 
         assert_eq!(dupstore.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn sizewise_sorting_two_files_of_same_size() -> Result<()> {
+        let root = TempDir::new()?;
+        let files = [
+            (root.path().join("fileone.bin"), generate_bytes(282624)),
+            (root.path().join("filetwo.bin"), generate_bytes(282624)),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let dupstore = Arc::new(DashMap::new());
+
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        assert_eq!(dupstore.len(), 1);
 
         Ok(())
     }

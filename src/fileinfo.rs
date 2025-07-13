@@ -19,9 +19,9 @@ impl FileInfo {
     pub fn hash(&self, seed: i64) -> Result<u128> {
         let file = fs::File::open(&self.path)?;
         let mapper = unsafe { Mmap::map(&file)? };
-        let final_hash = mapper
-            .chunks(4096)
-            .fold(0, |acc, chunk: &[u8]| acc + gxhash128(chunk, seed));
+        let final_hash = mapper.chunks(4096).fold(0u128, |acc, chunk: &[u8]| {
+            acc.wrapping_add(gxhash128(chunk, seed))
+        });
 
         Ok(final_hash)
     }
