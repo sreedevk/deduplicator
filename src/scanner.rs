@@ -3,12 +3,13 @@ use crate::{fileinfo::FileInfo, params::Params};
 use anyhow::Result;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use std::sync::{Arc, Mutex};
-use std::{fs, path::PathBuf, time::Duration};
+use std::{fs, path::Path, time::Duration};
 
 use globwalk::{GlobWalker, GlobWalkerBuilder};
 
 pub struct Scanner {
-    pub directory: Option<PathBuf>,
+    pub directory: Box<Path>,
+    pub app_args: Arc<Params>,
     pub filetypes: Option<String>,
     pub min_depth: Option<usize>,
     pub max_depth: Option<usize>,
@@ -18,43 +19,17 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn new() -> Self {
-        Self {
-            directory: None,
-            filetypes: None,
-            min_depth: None,
-            max_depth: None,
-            min_size: None,
-            follow_links: true,
-            progress: false,
-        }
-    }
-
-    pub fn build(app_args: Arc<Params>) -> Result<Self> {
-        let mut scanner = Scanner::new();
-        scanner.directory = Some(app_args.get_directory()?);
-        scanner.progress = app_args.progress;
-
-        if let Some(min_size) = app_args.get_min_size() {
-            scanner.min_size = Some(min_size);
-        }
-
-        if app_args.get_types().is_some() {
-            scanner.filetypes = app_args.get_types();
-        }
-
-        if app_args.min_depth.is_some() {
-            scanner.min_depth = app_args.min_depth;
-        }
-
-        if app_args.max_depth.is_some() {
-            scanner.max_depth = app_args.max_depth;
-        }
-
-        // TODO: Add option to disable follow links from cli app args
-        // scanner.follow_links = false;
-
-        Ok(scanner)
+    pub fn new(app_args: Arc<Params>) -> Result<Self> {
+        Ok(Self {
+            directory: app_args.get_directory()?.into_boxed_path(),
+            filetypes: app_args.get_types(),
+            min_depth: app_args.min_depth,
+            max_depth: app_args.max_depth,
+            min_size: app_args.get_min_size(),
+            follow_links: app_args.follow_links,
+            progress: app_args.progress,
+            app_args,
+        })
     }
 
     fn scan_patterns(&self) -> Result<String> {
@@ -62,15 +37,6 @@ impl Scanner {
             Some(ftypes) => format!("**/*{{{ftypes}}}"),
             None => "**/*".to_string(),
         })
-    }
-
-    fn scan_dir(&self) -> Result<PathBuf> {
-        let scan_dir = match &self.directory {
-            Some(path) => path.clone(),
-            None => std::env::current_dir()?,
-        };
-
-        Ok(fs::canonicalize(scan_dir)?)
     }
 
     fn attach_link_opts(&self, walker: GlobWalkerBuilder) -> Result<GlobWalkerBuilder> {
@@ -92,7 +58,7 @@ impl Scanner {
     }
     fn build_walker(&self) -> Result<GlobWalker> {
         let walker = Ok(GlobWalkerBuilder::from_patterns(
-            self.scan_dir()?,
+            self.directory.clone(),
             &[self.scan_patterns()?],
         ))
         .and_then(|walker| self.attach_walker_min_depth(walker))

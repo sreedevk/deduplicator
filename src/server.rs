@@ -56,7 +56,7 @@ impl Server {
         let progbarbox_sc_clone = progbarbox.clone();
 
         self.threadpool.execute(move || {
-            Scanner::build(app_args_clone_for_sc)
+            Scanner::new(app_args_clone_for_sc)
                 .unwrap()
                 .scan(file_queue_clone_sc, progbarbox_sc_clone)
                 .unwrap();
