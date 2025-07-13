@@ -30,7 +30,6 @@ pathdiff = "0.2.1"
 prettytable-rs = "0.10.0"
 rand = "0.9.1"
 rayon = "1.6.1"
-tempfile = "3.20.0"
 threadpool = "1.8.1"
 
 [profile.release]
@@ -56,4 +55,4 @@ targets = [
 cargo-dist-version = "0.0.7"
 
 [dev-dependencies]
-assert_cmd = "2.0.0"
+tempfile = "3.20.0"
