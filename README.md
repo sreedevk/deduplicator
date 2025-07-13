@@ -121,9 +121,9 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
 
 ## v0.3 checklist
 - [x] parallelization
-    - [x] (scanning) + ((processing sw) & (processing hw) & formatting)
-    - [ ] (scanning) + ((processing sw + processing hw) & formatting)
-    - [ ] (scanning) + processing sw + processing hw + formatting
+    - [x] (scanning) + (processing sw & processing hw & formatting & printing)
+    - [ ] (scanning + processing sw + processing hw) & formatting & printing
+    - [ ] scanning + processing sw + processing hw + formatting + printing
 - [x] reduce cloning values on the heap
 - [x] add a partial hashing mode (--strict)
 - [ ] add an option to use a bloom filter for very large filesystems
@@ -132,3 +132,4 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
 - [x] add silent mode
 - [ ] restore json output
 - [ ] update documentation
+- [x] remove color output
