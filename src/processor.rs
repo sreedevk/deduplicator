@@ -1,102 +1,368 @@
 use anyhow::Result;
 use dashmap::DashMap;
-use indicatif::{ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle};
+use indicatif::{
+    MultiProgress, ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle,
+};
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use std::{borrow::Cow, time::Duration};
+use std::borrow::Cow;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, TryLockError, TryLockResult};
+use std::time::Duration;
 
 use crate::fileinfo::FileInfo;
+use crate::params::Params;
 
-#[derive(Debug, Clone)]
-pub struct Processor {
-    pub files: Vec<FileInfo>,
-    pub hashwise_results: DashMap<String, Vec<FileInfo>>,
-    pub sizewise_results: DashMap<u64, Vec<FileInfo>>,
-    pub max_path_len: usize,
-}
+pub struct Processor {}
 
 impl Processor {
-    pub fn new(files: Vec<FileInfo>) -> Self {
-        Self {
-            files,
-            hashwise_results: DashMap::new(),
-            sizewise_results: DashMap::new(),
-            max_path_len: 0,
-        }
-    }
+    pub fn hashwise(
+        app_args: Arc<Params>,
+        sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
+        hw_store: Arc<DashMap<u128, Vec<FileInfo>>>,
+        progress_bar_box: Arc<MultiProgress>,
+        max_file_size: Arc<AtomicU64>,
+        seed: i64,
+    ) -> Result<()> {
+        let progress_bar = match app_args.progress {
+            true => progress_bar_box.add(ProgressBar::new_spinner()),
+            false => ProgressBar::hidden(),
+        };
 
-    pub fn hashwise(&mut self) -> Result<()> {
-        if self.sizewise_results.is_empty() {
-            return Ok(());
-        }
+        let keys: Vec<u64> = sw_store.clone().iter().map(|i| *i.key()).collect();
 
-        let progress_style = ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
-        )?;
-        let progress_bar = ProgressBar::new(self.files.len() as u64);
+        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
-        progress_bar.set_message("indexing file hashes");
+        progress_bar.set_message("files grouped by hash.");
 
-        let filelist = self
-            .sizewise_results
-            .clone()
-            .into_read_only()
-            .values()
-            .filter(|&subfiles| subfiles.len() > 1)
-            .flatten()
-            .cloned()
-            .collect::<Vec<FileInfo>>();
-
-        self.max_path_len = filelist
-            .iter()
-            .map(|x| x.path.clone().into_os_string().len())
-            .max()
-            .unwrap_or_default();
-
-        filelist
-            .into_par_iter()
+        keys.into_par_iter()
             .progress_with(progress_bar)
             .with_finish(ProgressFinish::WithMessage(Cow::from(
-                "indexed files hashes",
+                "files grouped by hash.",
             )))
-            .map(|file| file.hash())
-            .filter_map(Result::ok)
-            .for_each(move |file| {
-                self.hashwise_results
-                    .entry(file.hash.clone().unwrap_or_default())
-                    .and_modify(|fileset| fileset.push(file.clone()))
-                    .or_insert_with(|| vec![file]);
+            .for_each(|key| {
+                let group: Vec<FileInfo> = sw_store.get(&key).unwrap().to_vec();
+                if group.len() > 1 {
+                    group.into_par_iter().for_each(|file| {
+                        let fhash = if app_args.strict {
+                            file.hash(seed).expect("hashing file failed.")
+                        } else {
+                            file.initial_page_hash(seed).expect("hashing file failed.")
+                        };
+
+                        Self::compare_and_update_max_path_len(
+                            max_file_size.clone(),
+                            file.path.to_string_lossy().len() as u64,
+                        )
+                        .unwrap();
+
+                        hw_store
+                            .entry(fhash)
+                            .and_modify(|fileset| fileset.push(file.clone()))
+                            .or_insert_with(|| vec![file]);
+                    });
+                }
             });
 
         Ok(())
     }
 
-    pub fn sizewise(&mut self) -> Result<()> {
-        if self.files.is_empty() {
-            return Ok(());
+    pub fn compare_and_update_max_path_len(current: Arc<AtomicU64>, next: u64) -> Result<()> {
+        if current.load(Ordering::Relaxed) < next {
+            current.store(next, Ordering::Release);
         }
 
-        let progress_style = ProgressStyle::with_template(
-            "[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}",
-        )?;
-        let progress_bar = ProgressBar::new(self.files.len() as u64);
+        Ok(())
+    }
+
+    pub fn sizewise(
+        app_args: Arc<Params>,
+        scanner_finished: Arc<AtomicBool>,
+        store: Arc<DashMap<u64, Vec<FileInfo>>>,
+        files: Arc<Mutex<Vec<FileInfo>>>,
+        progress_bar_box: Arc<MultiProgress>,
+    ) -> Result<()> {
+        let progress_bar = match app_args.progress {
+            true => progress_bar_box.add(ProgressBar::new_spinner()),
+            false => ProgressBar::hidden(),
+        };
+
+        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
-        progress_bar.set_message("indexing file sizes");
+        progress_bar.set_message("files grouped by size");
 
-        self.files
-            .clone()
-            .into_par_iter()
-            .progress_with(progress_bar)
-            .with_finish(ProgressFinish::WithMessage(Cow::from(
-                "indexed files sizes",
-            )))
-            .for_each(|file| {
-                self.sizewise_results
-                    .entry(file.size)
-                    .and_modify(|fileset| fileset.push(file.clone()))
-                    .or_insert_with(|| vec![file]);
-            });
+        loop {
+            let fileopt: Option<FileInfo> = {
+                match files.try_lock() {
+                    Ok(mut flist) => flist.pop(),
+                    TryLockResult::Err(TryLockError::WouldBlock) => None,
+                    _ => None,
+                }
+            };
+
+            match fileopt {
+                Some(file) => {
+                    progress_bar.inc(1);
+                    store
+                        .entry(file.size)
+                        .and_modify(|fileset| fileset.push(file.clone()))
+                        .or_insert_with(|| vec![file]);
+                    continue;
+                }
+                None => match scanner_finished.load(std::sync::atomic::Ordering::Relaxed) {
+                    true => {
+                        progress_bar.finish_with_message("files grouped by size");
+                        break Ok(());
+                    }
+                    false => continue,
+                },
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Result;
+    use dashmap::DashMap;
+    use indicatif::MultiProgress;
+    use rand::Rng;
+    use std::fs::File;
+    use std::io::Write;
+    use std::sync::atomic::{AtomicBool, AtomicU64};
+    use std::sync::{Arc, Mutex};
+    use tempfile::TempDir;
+
+    use crate::{fileinfo::FileInfo, params::Params};
+
+    use super::Processor;
+
+    fn generate_bytes(size: usize) -> Vec<u8> {
+        let mut rng = rand::rng();
+        (0..size).map(|_| rng.random::<u8>()).collect::<Vec<u8>>()
+    }
+
+    #[test]
+    fn hashwise_sorting_two_files_with_identical_init_page_only_strict_mode() -> Result<()> {
+        let root = TempDir::new()?;
+        let content = generate_bytes(4096);
+
+        let mut content_x = content.clone();
+        let mut content_y = content.clone();
+
+        content_x.extend(generate_bytes(1720320));
+        content_y.extend(generate_bytes(1720320));
+
+        let files = [
+            (root.path().join("fileone.bin"), content_x),
+            (root.path().join("filetwo.bin"), content_y),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let dupstore = Arc::new(DashMap::new());
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let hw_dupstore = Arc::new(DashMap::new());
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        let args = Params {
+            strict: true,
+            ..Default::default()
+        };
+
+        Processor::hashwise(
+            Arc::new(args),
+            dupstore.clone(),
+            hw_dupstore.clone(),
+            Arc::new(MultiProgress::new()),
+            Arc::new(AtomicU64::new(32)),
+            300,
+        )?;
+
+        assert_eq!(hw_dupstore.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn hashwise_sorting_two_files_with_identical_init_page_only_fast_mode() -> Result<()> {
+        let root = TempDir::new()?;
+        let content = generate_bytes(4096);
+
+        let mut content_x = content.clone();
+        let mut content_y = content.clone();
+
+        content_x.extend(generate_bytes(1720320));
+        content_y.extend(generate_bytes(1720320));
+
+        let files = [
+            (root.path().join("fileone.bin"), content_x),
+            (root.path().join("filetwo.bin"), content_y),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let dupstore = Arc::new(DashMap::new());
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let hw_dupstore = Arc::new(DashMap::new());
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        Processor::hashwise(
+            Arc::new(Params::default()),
+            dupstore.clone(),
+            hw_dupstore.clone(),
+            Arc::new(MultiProgress::new()),
+            Arc::new(AtomicU64::new(32)),
+            300,
+        )?;
+
+        assert_eq!(hw_dupstore.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn hashwise_sorting_two_files_with_identical_data() -> Result<()> {
+        let root = TempDir::new()?;
+        let content = generate_bytes(282624);
+        let files = [
+            (root.path().join("fileone.bin"), content.clone()),
+            (root.path().join("filetwo.bin"), content.clone()),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let dupstore = Arc::new(DashMap::new());
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let hw_dupstore = Arc::new(DashMap::new());
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        Processor::hashwise(
+            Arc::new(Params::default()),
+            dupstore.clone(),
+            hw_dupstore.clone(),
+            Arc::new(MultiProgress::new()),
+            Arc::new(AtomicU64::new(32)),
+            300,
+        )?;
+
+        assert_eq!(hw_dupstore.len(), 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn sizewise_sorting_two_files_of_different_sizes() -> Result<()> {
+        let root = TempDir::new()?;
+        let files = [
+            (root.path().join("fileone.bin"), generate_bytes(282624)),
+            (root.path().join("filetwo.bin"), generate_bytes(1720320)),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let dupstore = Arc::new(DashMap::new());
+
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        assert_eq!(dupstore.len(), 2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn sizewise_sorting_two_files_of_same_size() -> Result<()> {
+        let root = TempDir::new()?;
+        let files = [
+            (root.path().join("fileone.bin"), generate_bytes(282624)),
+            (root.path().join("filetwo.bin"), generate_bytes(282624)),
+        ];
+
+        for (fpath, content) in files.iter() {
+            let mut f = File::create_new(fpath)?;
+            f.write_all(content)?;
+        }
+
+        let file_queue = Arc::new(Mutex::new(
+            files
+                .iter()
+                .map(|f| FileInfo::new(f.0.clone()).unwrap())
+                .collect::<Vec<FileInfo>>(),
+        ));
+
+        let dupstore = Arc::new(DashMap::new());
+
+        Processor::sizewise(
+            Arc::new(Params::default()),
+            Arc::new(AtomicBool::new(true)),
+            dupstore.clone(),
+            file_queue,
+            Arc::new(MultiProgress::new()),
+        )?;
+
+        assert_eq!(dupstore.len(), 1);
 
         Ok(())
     }

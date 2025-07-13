@@ -1,43 +1,45 @@
 use anyhow::Result;
-use gxhash::GxHasher;
+use gxhash::gxhash128;
 use memmap2::Mmap;
-use serde::Serialize;
-use std::fs;
-use std::hash::Hasher;
-use std::{fs::Metadata, path::PathBuf};
+use std::{
+    fs,
+    io::Read,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct FileInfo {
-    pub path: PathBuf,
-    pub hash: Option<String>,
+    pub path: Box<Path>,
     pub size: u64,
-    #[serde(skip)]
-    pub filemeta: Metadata,
+    pub modified: SystemTime,
 }
 
 impl FileInfo {
-    pub fn hash(&self) -> Result<Self> {
-        let file = fs::File::open(self.path.clone())?;
+    pub fn hash(&self, seed: i64) -> Result<u128> {
+        let file = fs::File::open(&self.path)?;
         let mapper = unsafe { Mmap::map(&file)? };
-        let mut primhasher = GxHasher::default();
+        let final_hash = mapper.chunks(4096).fold(0u128, |acc, chunk: &[u8]| {
+            acc.wrapping_add(gxhash128(chunk, seed))
+        });
 
-        mapper
-            .chunks(1_000_000)
-            .for_each(|chunk| primhasher.write(chunk));
+        Ok(final_hash)
+    }
 
-        Ok(Self {
-            hash: Some(primhasher.finish().to_string()),
-            ..self.clone()
-        })
+    pub fn initial_page_hash(&self, seed: i64) -> Result<u128> {
+        let mut file = fs::File::open(&self.path)?;
+        let mut buffer = [0; 4096];
+        let bytes_read = file.read(&mut buffer)?;
+
+        Ok(gxhash128(&buffer[..bytes_read], seed))
     }
 
     pub fn new(path: PathBuf) -> Result<Self> {
-        let filemeta = std::fs::metadata(path.clone())?;
+        let filemeta = std::fs::metadata(&path)?;
         Ok(Self {
-            path,
-            filemeta: filemeta.clone(),
-            hash: None,
+            path: path.into_boxed_path(),
             size: filemeta.len(),
+            modified: filemeta.modified()?,
         })
     }
 }
