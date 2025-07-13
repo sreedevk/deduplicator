@@ -54,7 +54,7 @@ deduplicator ~/Media --min-size 100mb
 Currently, you can only install deduplicator using cargo package manager.
 
 ### Cargo
-> [!WARNING] GxHash relies on aes hardware acceleration, so please set `RUSTFLAGS` to `"-C target-feature=+aes"` or `"-C target-cpu=native"` before
+> GxHash relies on aes hardware acceleration, so please set `RUSTFLAGS` to `"-C target-feature=+aes"` or `"-C target-cpu=native"` before
 > installing.
 
 #### install from crates.io
