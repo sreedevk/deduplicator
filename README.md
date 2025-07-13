@@ -7,7 +7,7 @@
 ## Usage
 
 ```bash
-find,filter,delete duplicate files
+find,filter and delete duplicate files
 
 Usage: deduplicator [OPTIONS] [scan_dir_path]
 
@@ -46,42 +46,48 @@ deduplicator ~/Media --min-size 100mb
 ```
 
 ## Installation
+Currently, you can only install deduplicator using cargo package manager.
 
-### Cargo Install
-#### Stable
-> [!WARNING] Note from GxHash: GxHash relies on aes hardware acceleration, you must make sure the aes feature is enabled when building (otherwise it won't build). This can be done by setting the RUSTFLAGS environment variable to -C target-feature=+aes or -C target-cpu=native (the latter should work if your CPU is properly recognized by rustc, which is the case most of the time).
-> please install version `0.2.1`  if you are unable to install `0.3.0`
+### Cargo
+> [!WARNING] GxHash relies on aes hardware acceleration, so please set `RUSTFLAGS` to `"-C target-feature=+aes"` or `"-C target-cpu=native"` before
+> installing.
 
+#### install from crates.io
 ```bash
 $ RUSTFLAGS="-C target-cpu=native" cargo install deduplicator
 ```
 
+#### install from git
+```bash
+$ RUSTFLAGS="-C target-cpu=native" cargo install deduplicator --git https://github.com/sreedevk/deduplicator
+```
+
 ## Performance
-Deduplicator uses size comparison and gxhash (a non non-cryptographic hashing algorithm) to quickly scan through large number of files to find duplicates. its also highly parallel (uses rayon and dashmap). 
+Deduplicator uses size comparison and [GxHash](https://docs.rs/gxhash/latest/gxhash/) to quickly check a large number of files to find duplicates. its also heavily parallelized. The default behavior of deduplicator is to only hash the first page (4K) of the file. This is to ensure that performance is the default priority. You can modify this behavior by using the `--strict` flag which will hash the whole file and ensure that 2 files are indeed duplicates. I'll add benchmarks in future versions.
 
-## Screenshots
-![](https://user-images.githubusercontent.com/36154121/213618143-e5182e39-731e-4817-87dd-1a6a0f38a449.gif)
-
-## Roadmap
-    - Tree format output for duplicate file listing
-    - GUI
-    - Packages for different operating system repositories (currently only installable via cargo) 
-
-## v0.3 checklist
-- [x] parallelization
-    - [x] (scanning) + (processing sw & processing hw & formatting & printing)
+## proposed
+- [ ] parallelization
     - [ ] (scanning + processing sw + processing hw) & formatting & printing
     - [ ] scanning + processing sw + processing hw + formatting + printing
-- [x] reduce cloning values on the heap
-- [x] add a partial hashing mode (--strict)
 - [ ] max file path size should use the last set of duplicates
-- [-] add unit tests
-- [x] add silent mode
-- [ ] restore json output
-- [ ] update documentation
-- [x] remove color output
-- [x] progress bar improvements
-    - [x] use progress bar groups
+- [ ] add more unit tests
+- [ ] restore json output (was removed in 0.3)
 - [ ] fix memory leak on very large filesystems
     - [ ] maybe use a bloom filter
     - [ ] reduce FileInfo size
+- [ ] output in a tree format
+- [ ] tui
+- [ ] add benchmarks
+- [ ] change the default hashing method to include the first & last page of a file (8K)
+
+## v0.3
+- [x] parallelization
+    - [x] (scanning) + (processing sw & processing hw & formatting & printing)
+- [x] reduce cloning values on the heap
+- [x] add a partial hashing mode (--strict)
+- [x] add unit tests
+- [x] add silent mode
+- [x] update documentation
+- [x] remove color output
+- [x] progress bar improvements
+    - [x] use progress bar groups
