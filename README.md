@@ -71,6 +71,8 @@ Deduplicator uses size comparison and [GxHash](https://docs.rs/gxhash/latest/gxh
     - [ ] scanning + processing sw + processing hw + formatting + printing
 - [ ] max file path size should use the last set of duplicates
 - [ ] add more unit tests
+    - [ ] test against different filesystems
+    - [ ] test against different file name encodings
 - [ ] restore json output (was removed in 0.3)
 - [ ] fix memory leak on very large filesystems
     - [ ] maybe use a bloom filter
@@ -91,3 +93,4 @@ Deduplicator uses size comparison and [GxHash](https://docs.rs/gxhash/latest/gxh
 - [x] remove color output
 - [x] progress bar improvements
     - [x] use progress bar groups
+- [x] remove broken json rendering
