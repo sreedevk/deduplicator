@@ -1,10 +1,12 @@
 use anyhow::Result;
 use gxhash::GxHasher;
 use memmap2::Mmap;
-use std::fs;
-use std::hash::Hasher;
-use std::io::Read;
-use std::{fs::Metadata, path::PathBuf};
+use std::{
+    fs::{self, Metadata},
+    hash::Hasher,
+    io::Read,
+    path::PathBuf,
+};
 
 #[derive(Debug, Clone)]
 pub struct FileInfo {

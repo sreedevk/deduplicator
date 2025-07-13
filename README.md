@@ -110,19 +110,6 @@ Deduplicator uses size comparison and fxhash (a non non-cryptographic hashing al
 
 These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine). Here are the specs of the machine used to benchmark deduplicator:
 
-```
-OS: Arch Linux x86_64 
-Host: Precision 5540
-Kernel: 5.15.89-1-lts 
-Uptime: 4 hours, 44 mins 
-Shell: zsh 5.9                        
-Terminal: kitty 
-CPU: Intel i9-9880H (16) @ 4.800GHz 
-GPU: NVIDIA Quadro T2000 Mobile / Max-Q 
-GPU: Intel CoffeeLake-H GT2 [UHD Graphics 630] 
-Memory: 31731MiB (~32GiB)
-```
-
 ## Screenshots
 
 ![](https://user-images.githubusercontent.com/36154121/213618143-e5182e39-731e-4817-87dd-1a6a0f38a449.gif)
@@ -133,9 +120,15 @@ Memory: 31731MiB (~32GiB)
     - Packages for different operating system repositories (currently only installable via cargo) 
 
 ## v0.3 checklist
-- [x] parallelization of scanning, processing and formatting
+- [x] parallelization
+    - [x] (scanning) + ((processing sw) & (processing hw) & formatting)
+    - [ ] (scanning) + ((processing sw + processing hw) & formatting)
+    - [ ] (scanning) + processing sw + processing hw + formatting
 - [x] reduce cloning values on the heap
 - [x] add a partial hashing mode (--strict)
 - [ ] add an option to use a bloom filter for very large filesystems
 - [ ] max file path size should use the last set of duplicates
-- [ ] add unit tests
+- [-] add unit tests
+- [ ] add silent mode
+- [ ] restore json output
+- [ ] update documentation

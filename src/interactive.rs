@@ -1,10 +1,11 @@
-use crate::formatter::Formatter;
-use crate::{fileinfo::FileInfo, params::Params};
+use crate::{fileinfo::FileInfo, formatter::Formatter, params::Params};
 use anyhow::Result;
 use dashmap::DashMap;
 use prettytable::{format, row, Table};
-use std::io::{self, Write};
-use std::sync::Arc;
+use std::{
+    io::{self, Write},
+    sync::Arc,
+};
 
 pub fn scan_group_confirmation() -> Result<bool> {
     print!("\nconfirm? [y/N]: ");

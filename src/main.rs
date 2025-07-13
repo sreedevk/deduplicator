@@ -6,13 +6,11 @@ mod processor;
 mod scanner;
 mod server;
 
-use std::sync::atomic::Ordering;
-
-use self::formatter::Formatter;
-use self::server::Server;
+use self::{formatter::Formatter, server::Server};
 use anyhow::Result;
 use clap::Parser;
 use params::Params;
+use std::sync::atomic::Ordering;
 
 fn main() -> Result<()> {
     let app_args = Params::parse();

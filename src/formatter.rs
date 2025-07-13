@@ -1,20 +1,14 @@
-pub struct Formatter;
-use crate::fileinfo::FileInfo;
-use crate::params::Params;
+use crate::{fileinfo::FileInfo, params::Params};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
-use indicatif::{
-    ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle,
-};
+use indicatif::{ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle};
 use pathdiff::diff_paths;
 use prettytable::{format, row, Row, Table};
 use rayon::prelude::*;
-use std::borrow::Cow;
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Duration;
+use std::{borrow::Cow, path::PathBuf, sync::Arc, time::Duration};
 
+pub struct Formatter;
 impl Formatter {
     pub fn human_path(
         file: &FileInfo,
