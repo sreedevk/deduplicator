@@ -18,7 +18,7 @@ impl Processor {
     pub fn hashwise(
         app_args: Arc<Params>,
         sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
-        hw_store: Arc<DashMap<String, Vec<FileInfo>>>,
+        hw_store: Arc<DashMap<u128, Vec<FileInfo>>>,
         progress_bar_box: Arc<MultiProgress>,
         max_file_size: Arc<AtomicU64>,
     ) -> Result<()> {
@@ -129,7 +129,7 @@ mod tests {
     use rand::Rng;
     use std::fs::File;
     use std::io::Write;
-    use std::sync::atomic::{AtomicBool, AtomicU64};
+    use std::sync::atomic::AtomicBool;
     use std::sync::{Arc, Mutex};
     use tempfile::TempDir;
 
@@ -169,7 +169,6 @@ mod tests {
             Arc::new(AtomicBool::new(true)),
             dupstore.clone(),
             file_queue,
-            Arc::new(AtomicU64::new(0)),
             Arc::new(MultiProgress::new()),
         )?;
 

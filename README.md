@@ -7,6 +7,8 @@
 ## Usage
 
 ```bash
+find,filter,delete duplicate files
+
 Usage: deduplicator [OPTIONS] [scan_dir_path]
 
 Arguments:
@@ -15,12 +17,14 @@ Arguments:
 Options:
   -t, --types <TYPES>          Filetypes to deduplicate [default = all]
   -i, --interactive            Delete files interactively
-  -s, --min-size <MIN_SIZE>    Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
-  -d, --max-depth <MAX_DEPTH>  Max Depth to scan while looking for duplicates
-      --min-depth <MIN_DEPTH>  Min Depth to scan while looking for duplicates
+  -m, --min-size <MIN_SIZE>    Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
+  -D, --max-depth <MAX_DEPTH>  Max Depth to scan while looking for duplicates
+  -d, --min-depth <MIN_DEPTH>  Min Depth to scan while looking for duplicates
   -f, --follow-links           Follow links while scanning directories
-  -h, --help                   Print help information
-  -V, --version                Print version information
+  -s, --strict                 Guarantees that two files are duplicate (performs a full hash)
+  -p, --progress               Show Progress spinners & metrics
+  -h, --help                   Print help
+  -V, --version                Print version
 ```
 ### Examples
 
@@ -46,15 +50,12 @@ deduplicator ~/Media --min-size 100mb
 ### Cargo Install
 
 #### Stable
-
 > [!WARNING] Note from GxHash: GxHash relies on aes hardware acceleration, you must make sure the aes feature is enabled when building (otherwise it won't build). This can be done by setting the RUSTFLAGS environment variable to -C target-feature=+aes or -C target-cpu=native (the latter should work if your CPU is properly recognized by rustc, which is the case most of the time).
-> please install version `0.2.1`  if you are unable to install `0.2.2`
+> please install version `0.2.1`  if you are unable to install `0.3.0`
 
 ```bash
 $ RUSTFLAGS="-C target-cpu=native" cargo install deduplicator
 ```
-
-> [!]
 
 #### Nightly
 
@@ -95,23 +96,9 @@ Note: If you Run into an msvc error, please install MSCV from [here](https://lea
 
 ## Performance
 
-Deduplicator uses size comparison and fxhash (a non non-cryptographic hashing algo) to quickly scan through large number of files to find duplicates. its also highly parallel (uses rayon and dashmap). I was able to scan through 120GB of files (Videos, PDFs, Images) in ~300ms. checkout the benchmarks
-
-## benchmarks
-
-| Command | Dirsize | Filecount | Mean [ms] | Min [ms] | Max [ms] | Relative |
-|:---|:---|---:|---:|---:|---:|---:|
-| `deduplicator ~/Data/tmp` | (~120G) | 721 files | 33.5 ± 28.6 | 25.3 | 151.5 | 1.87 ± 1.60 |
-| `deduplicator ~/Data/books` | (~8.6G) | 1419 files | 24.5 ± 1.0 | 22.9 | 28.1 | 1.37 ± 0.08 |
-| `deduplicator ~/Data/books --min-size 10M` | (~8.6G) | 1419 files | 17.9 ± 0.7 | 16.8 | 20.0 | 1.00 |
-| `deduplicator ~/Data/ --types pdf,jpg,png,jpeg` | (~290G) | 104222 files | 1207.2 ± 37.0 | 1172.2 | 1287.7 | 67.27 ± 3.33 |
-
-* The last entry is lower because of the number of files deduplicator had to go through (~660895 Files). The average size of the files rarely affect the performance of deduplicator.
-
-These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine). Here are the specs of the machine used to benchmark deduplicator:
+Deduplicator uses size comparison and gxhash (a non non-cryptographic hashing algorithm) to quickly scan through large number of files to find duplicates. its also highly parallel (uses rayon and dashmap). 
 
 ## Screenshots
-
 ![](https://user-images.githubusercontent.com/36154121/213618143-e5182e39-731e-4817-87dd-1a6a0f38a449.gif)
 
 ## Roadmap
@@ -132,8 +119,8 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
 - [ ] restore json output
 - [ ] update documentation
 - [x] remove color output
-- [ ] progress bar improvements
-    - [ ] use progress bar groups
+- [x] progress bar improvements
+    - [x] use progress bar groups
 - [ ] fix memory leak on very large filesystems
     - [ ] maybe use a bloom filter
     - [ ] reduce FileInfo size

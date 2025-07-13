@@ -36,16 +36,25 @@ impl Formatter {
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
 
+    pub fn gen_sub_tbl(items: Vec<FileInfo>, app_args: &Params, max_path_len: u64) -> Table {
+        let mut inner_table = Table::new();
+        inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+        items.iter().for_each(|file| {
+            inner_table.add_row(row![
+                Self::human_path(file, app_args, max_path_len as usize).unwrap_or_default(),
+                Self::human_filesize(file).unwrap_or_default(),
+                Self::human_mtime(file).unwrap_or_default()
+            ]);
+        });
+        inner_table
+    }
+
     pub fn generate_table(
-        raw: Arc<DashMap<String, Vec<FileInfo>>>,
-        max_path_len: u64,
-        app_args: &Params,
+        raw: Arc<DashMap<u128, Vec<FileInfo>>>,
+        mpath_len: u64,
+        args: &Params,
     ) -> Result<Table> {
-        let mut output_table = Table::new();
-
-        output_table.set_titles(row!["hash", "duplicates"]);
-
-        let progress_bar = match app_args.progress {
+        let progress_bar = match args.progress {
             true => ProgressBar::new_spinner(),
             false => ProgressBar::hidden(),
         };
@@ -60,26 +69,21 @@ impl Formatter {
             .progress_with(progress_bar)
             .with_finish(ProgressFinish::WithMessage(Cow::from("output generated")))
             .map(|i| {
-                let mut inner_table = Table::new();
-                inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-                i.value().iter().for_each(|file| {
-                    inner_table.add_row(row![
-                        Self::human_path(file, app_args, max_path_len as usize).unwrap_or_default(),
-                        Self::human_filesize(file).unwrap_or_default(),
-                        Self::human_mtime(file).unwrap_or_default()
-                    ]);
-                });
-
-                row![i.key(), inner_table]
+                row![
+                    i.key(),
+                    Self::gen_sub_tbl(i.value().to_vec(), args, mpath_len)
+                ]
             })
             .collect::<Vec<Row>>();
 
+        let mut output_table = Table::new();
+        output_table.set_titles(row!["hash", "duplicates"]);
         output_table.extend(rows);
         Ok(output_table)
     }
 
     pub fn print(
-        raw: Arc<DashMap<String, Vec<FileInfo>>>,
+        raw: Arc<DashMap<u128, Vec<FileInfo>>>,
         max_path_len: u64,
         app_args: &Params,
     ) -> Result<()> {

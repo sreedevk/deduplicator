@@ -10,7 +10,7 @@ use std::{
 pub struct Interactive;
 
 impl Interactive {
-    pub fn init(result: Arc<DashMap<String, Vec<FileInfo>>>, app_args: &Params) -> Result<()> {
+    pub fn init(result: Arc<DashMap<u128, Vec<FileInfo>>>, app_args: &Params) -> Result<()> {
         result.clone().iter().enumerate().for_each(|(gindex, i)| {
             let group = i.value();
             let mut itable = Table::new();

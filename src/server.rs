@@ -14,7 +14,7 @@ use crate::params::Params;
 pub struct Server {
     filequeue: Arc<Mutex<Vec<FileInfo>>>,
     sw_duplicate_set: Arc<DashMap<u64, Vec<FileInfo>>>,
-    pub hw_duplicate_set: Arc<DashMap<String, Vec<FileInfo>>>,
+    pub hw_duplicate_set: Arc<DashMap<u128, Vec<FileInfo>>>,
     threadpool: ThreadPool,
     app_args: Arc<Params>,
     pub max_file_path_len: Arc<AtomicU64>,

@@ -1,8 +1,8 @@
 [package]
 name = "deduplicator"
-version = "0.2.2"
+version = "0.3.0"
 edition = "2021"
-description = "find,filter,delete Duplicates"
+description = "find,filter and delete duplicate files"
 repository = "https://github.com/sreedevk/deduplicator"
 license = "MIT"
 authors = [
@@ -12,7 +12,6 @@ authors = [
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 anyhow = "1.0.68"
 bytesize = "1.1.0"
