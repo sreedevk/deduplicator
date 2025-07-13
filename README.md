@@ -48,7 +48,6 @@ deduplicator ~/Media --min-size 100mb
 ## Installation
 
 ### Cargo Install
-
 #### Stable
 > [!WARNING] Note from GxHash: GxHash relies on aes hardware acceleration, you must make sure the aes feature is enabled when building (otherwise it won't build). This can be done by setting the RUSTFLAGS environment variable to -C target-feature=+aes or -C target-cpu=native (the latter should work if your CPU is properly recognized by rustc, which is the case most of the time).
 > please install version `0.2.1`  if you are unable to install `0.3.0`

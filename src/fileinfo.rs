@@ -1,9 +1,8 @@
 use anyhow::Result;
-use gxhash::GxHasher;
+use gxhash::gxhash128;
 use memmap2::Mmap;
 use std::{
     fs,
-    hash::Hasher,
     io::Read,
     path::{Path, PathBuf},
     time::SystemTime,
@@ -17,25 +16,22 @@ pub struct FileInfo {
 }
 
 impl FileInfo {
-    pub fn hash(&self) -> Result<u128> {
+    pub fn hash(&self, seed: i64) -> Result<u128> {
         let file = fs::File::open(&self.path)?;
         let mapper = unsafe { Mmap::map(&file)? };
-        let mut primhasher = GxHasher::default();
+        let final_hash = mapper
+            .chunks(4096)
+            .fold(0, |acc, chunk: &[u8]| acc + gxhash128(chunk, seed));
 
-        mapper
-            .chunks(1_000_000)
-            .for_each(|chunk| primhasher.write(chunk));
-
-        Ok(primhasher.finish_u128())
+        Ok(final_hash)
     }
 
-    pub fn initial_page_hash(&self) -> Result<u128> {
-        let file = fs::File::open(&self.path)?;
-        let mapper = unsafe { Mmap::map(&file)? };
-        let mut primhasher = GxHasher::default();
-        primhasher.write(mapper.take(4096).into_inner());
+    pub fn initial_page_hash(&self, seed: i64) -> Result<u128> {
+        let mut file = fs::File::open(&self.path)?;
+        let mut buffer = [0; 4096];
+        let bytes_read = file.read(&mut buffer)?;
 
-        Ok(primhasher.finish_u128())
+        Ok(gxhash128(&buffer[..bytes_read], seed))
     }
 
     pub fn new(path: PathBuf) -> Result<Self> {

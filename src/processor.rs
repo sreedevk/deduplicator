@@ -21,6 +21,7 @@ impl Processor {
         hw_store: Arc<DashMap<u128, Vec<FileInfo>>>,
         progress_bar_box: Arc<MultiProgress>,
         max_file_size: Arc<AtomicU64>,
+        seed: i64,
     ) -> Result<()> {
         let progress_bar = match app_args.progress {
             true => progress_bar_box.add(ProgressBar::new_spinner()),
@@ -44,9 +45,9 @@ impl Processor {
                 if group.len() > 1 {
                     group.into_par_iter().for_each(|file| {
                         let fhash = if app_args.strict {
-                            file.hash().expect("hashing file failed.")
+                            file.hash(seed).expect("hashing file failed.")
                         } else {
-                            file.initial_page_hash().expect("hashing file failed.")
+                            file.initial_page_hash(seed).expect("hashing file failed.")
                         };
 
                         Self::compare_and_update_max_path_len(

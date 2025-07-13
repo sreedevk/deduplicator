@@ -6,6 +6,7 @@ use crate::scanner::Scanner;
 use anyhow::Result;
 use dashmap::DashMap;
 use indicatif::{MultiProgress, ProgressDrawTarget};
+use rand::Rng;
 use threadpool::ThreadPool;
 
 use crate::fileinfo::FileInfo;
@@ -34,6 +35,8 @@ impl Server {
 
     pub fn start(&self) -> Result<()> {
         let progbarbox = Arc::new(MultiProgress::new());
+        let mut rng = rand::rng();
+        let seed: i64 = rng.random();
 
         if !self.app_args.progress {
             progbarbox.set_draw_target(ProgressDrawTarget::hidden());
@@ -82,6 +85,7 @@ impl Server {
                 store_dupl_hw,
                 progbarbox_pr_clone,
                 max_file_path_len_clone,
+                seed,
             )
             .unwrap();
         });
