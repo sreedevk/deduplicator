@@ -18,7 +18,7 @@ impl Interactive {
             itable.set_titles(row!["index", "filename", "size", "updated_at"]);
             let max_path_size = group
                 .iter()
-                .map(|f| f.path.clone().into_os_string().len())
+                .map(|f| f.path.iter().count())
                 .max()
                 .unwrap_or_default();
 

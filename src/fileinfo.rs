@@ -2,17 +2,18 @@ use anyhow::Result;
 use gxhash::GxHasher;
 use memmap2::Mmap;
 use std::{
-    fs::{self, Metadata},
+    fs,
     hash::Hasher,
     io::Read,
-    path::PathBuf,
+    path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 #[derive(Debug, Clone)]
 pub struct FileInfo {
-    pub path: PathBuf,
+    pub path: Box<Path>,
     pub size: u64,
-    pub filemeta: Metadata,
+    pub modified: SystemTime,
 }
 
 impl FileInfo {
@@ -40,9 +41,9 @@ impl FileInfo {
     pub fn new(path: PathBuf) -> Result<Self> {
         let filemeta = std::fs::metadata(&path)?;
         Ok(Self {
-            path,
-            filemeta: filemeta.clone(),
+            path: path.into_boxed_path(),
             size: filemeta.len(),
+            modified: filemeta.modified()?,
         })
     }
 }

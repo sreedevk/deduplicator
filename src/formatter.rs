@@ -32,7 +32,7 @@ impl Formatter {
     }
 
     pub fn human_mtime(file: &FileInfo) -> Result<String> {
-        let modified_time: DateTime<Utc> = file.filemeta.modified()?.into();
+        let modified_time: DateTime<Utc> = file.modified.into();
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
 
