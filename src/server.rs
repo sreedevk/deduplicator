@@ -57,6 +57,7 @@ impl Server {
 
         self.threadpool.execute(move || {
             Processor::sizewise(
+                app_args_clone_for_pr.clone(),
                 sfin_pr_tr_cl,
                 store_dupl_sw_for_sw,
                 file_queue_clone_pr,

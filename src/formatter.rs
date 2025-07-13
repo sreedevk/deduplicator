@@ -42,10 +42,15 @@ impl Formatter {
         app_args: &Params,
     ) -> Result<Table> {
         let mut output_table = Table::new();
+
         output_table.set_titles(row!["hash", "duplicates"]);
 
+        let progress_bar = match app_args.progress {
+            true => ProgressBar::new_spinner(),
+            false => ProgressBar::hidden(),
+        };
+
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("generating output");

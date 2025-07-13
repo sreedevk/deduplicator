@@ -14,6 +14,7 @@ pub struct Scanner {
     pub max_depth: Option<usize>,
     pub min_size: Option<u64>,
     pub follow_links: bool,
+    pub progress: bool,
 }
 
 impl Scanner {
@@ -25,12 +26,14 @@ impl Scanner {
             max_depth: None,
             min_size: None,
             follow_links: true,
+            progress: false,
         }
     }
 
     pub fn build(app_args: Arc<Params>) -> Result<Self> {
         let mut scanner = Scanner::new();
         scanner.directory = Some(app_args.get_directory()?);
+        scanner.progress = app_args.progress;
 
         if let Some(min_size) = app_args.get_min_size() {
             scanner.min_size = Some(min_size);
@@ -100,8 +103,11 @@ impl Scanner {
     }
 
     pub fn scan(&self, files: Arc<Mutex<Vec<FileInfo>>>) -> Result<()> {
+        let progress_bar = match self.progress {
+            true => ProgressBar::new_spinner(),
+            false => ProgressBar::hidden(),
+        };
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("paths mapped");

@@ -18,9 +18,13 @@ impl Processor {
         sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
         hw_store: Arc<DashMap<String, Vec<FileInfo>>>,
     ) -> Result<()> {
+        let progress_bar = match app_args.progress {
+            true => ProgressBar::new_spinner(),
+            false => ProgressBar::hidden(),
+        };
+
         let keys: Vec<u64> = sw_store.clone().iter().map(|i| *i.key()).collect();
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("files grouped by hash.");
@@ -60,13 +64,18 @@ impl Processor {
     }
 
     pub fn sizewise(
+        app_args: Arc<Params>,
         scanner_finished: Arc<AtomicBool>,
         store: Arc<DashMap<u64, Vec<FileInfo>>>,
         files: Arc<Mutex<Vec<FileInfo>>>,
         max_file_size: Arc<AtomicU64>,
     ) -> Result<()> {
+        let progress_bar = match app_args.progress {
+            true => ProgressBar::new_spinner(),
+            false => ProgressBar::hidden(),
+        };
+
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        let progress_bar = ProgressBar::new_spinner();
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("files grouped by size");
@@ -94,7 +103,10 @@ impl Processor {
                     continue;
                 }
                 None => match scanner_finished.load(std::sync::atomic::Ordering::Relaxed) {
-                    true => break Ok(()),
+                    true => {
+                        progress_bar.finish_with_message("files grouped by size");
+                        break Ok(());
+                    }
                     false => continue,
                 },
             }
@@ -113,7 +125,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
     use tempfile::TempDir;
 
-    use crate::fileinfo::FileInfo;
+    use crate::{fileinfo::FileInfo, params::Params};
 
     use super::Processor;
 
@@ -145,6 +157,7 @@ mod tests {
         let dupstore = Arc::new(DashMap::new());
 
         Processor::sizewise(
+            Arc::new(Params::default()),
             Arc::new(AtomicBool::new(true)),
             dupstore.clone(),
             file_queue,

@@ -129,6 +129,6 @@ These benchmarks were run using [hyperfine](https://github.com/sharkdp/hyperfine
 - [ ] add an option to use a bloom filter for very large filesystems
 - [ ] max file path size should use the last set of duplicates
 - [-] add unit tests
-- [ ] add silent mode
+- [x] add silent mode
 - [ ] restore json output
 - [ ] update documentation

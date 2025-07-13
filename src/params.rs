@@ -3,7 +3,7 @@ use std::{fs, path::PathBuf};
 use anyhow::Result;
 use clap::{Parser, ValueHint};
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Debug, Default, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct Params {
     /// Filetypes to deduplicate [default = all]
@@ -30,6 +30,9 @@ pub struct Params {
     /// Guarantees that two files are duplicate (performs a full hash)
     #[arg(long, short = 'f', default_value = "false")]
     pub strict: bool,
+    /// Show Progress spinners & metrics
+    #[arg(long, short = 'p', default_value = "false")]
+    pub progress: bool,
 }
 
 impl Params {
