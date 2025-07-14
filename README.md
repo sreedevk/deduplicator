@@ -139,13 +139,19 @@ Benchmark 1: ./target/release/deduplicator bench_artifacts
 - [ ] add more unit tests
     - [ ] test against different filesystems
     - [ ] test against different file name encodings
-- [ ] restore json output (was removed in 0.3)
+- [ ] restore json output (was removed in 0.3 due to quality issues)
 - [ ] fix memory leak on very large filesystems
     - [ ] maybe use a bloom filter
     - [ ] reduce FileInfo size
-- [ ] output in a tree format
+- [ ] output a duplicate tree
 - [ ] tui
 - [ ] change the default hashing method to include the first & last page of a file (8K)
+- [ ] provide option to localize duplicate detection to arbitrary levels relative to current directory
+- [ ] bulk operations
+    - [ ] --keep-latest
+    - [ ] --keep-oldest
+    - [ ] --keep-last-modified
+    - [ ] --keep-first-modified
 
 ## v0.3
 - [x] parallelization
