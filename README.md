@@ -15,22 +15,26 @@ Arguments:
   [scan_dir_path]  Run Deduplicator on dir different from pwd (e.g., ~/Pictures )
 
 Options:
-  -t, --types <TYPES>          Filetypes to deduplicate [default = all]
-  -i, --interactive            Delete files interactively
-  -m, --min-size <MIN_SIZE>    Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
-  -D, --max-depth <MAX_DEPTH>  Max Depth to scan while looking for duplicates
-  -d, --min-depth <MIN_DEPTH>  Min Depth to scan while looking for duplicates
-  -f, --follow-links           Follow links while scanning directories
-  -s, --strict                 Guarantees that two files are duplicate (performs a full hash)
-  -p, --progress               Show Progress spinners & metrics
-  -h, --help                   Print help
-  -V, --version                Print version
+  -T, --exclude-types <EXCLUDE_TYPES>  Exclude Filetypes [default = none]
+  -t, --types <TYPES>                  Filetypes to deduplicate [default = all]
+  -i, --interactive                    Delete files interactively
+  -m, --min-size <MIN_SIZE>            Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T) [default: 1b]
+  -D, --max-depth <MAX_DEPTH>          Max Depth to scan while looking for duplicates
+  -d, --min-depth <MIN_DEPTH>          Min Depth to scan while looking for duplicates
+  -f, --follow-links                   Follow links while scanning directories
+  -s, --strict                         Guarantees that two files are duplicate (performs a full hash)
+  -p, --progress                       Show Progress spinners & metrics
+  -h, --help                           Print help
+  -V, --version                        Print version
 ```
 ### Examples
 
 ```bash
 # Scan for duplicates recursively from the current dir, only look for png, jpg & pdf file types & interactively delete files
 deduplicator -t pdf,jpg,png -i
+
+# Scan for duplicates recursively from current dir, exclude png and jpg file types
+deduplicator -T jpg,png
 
 # Scan for duplicates recursively from the ~/Pictures dir, only look for png, jpeg, jpg & pdf file types & interactively delete files
 deduplicator ~/Pictures/ -t png,jpeg,jpg,pdf -i

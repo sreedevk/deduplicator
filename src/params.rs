@@ -2,10 +2,14 @@ use std::{fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Parser, ValueHint};
+use std::collections::HashSet;
 
 #[derive(Parser, Debug, Default, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct Params {
+    /// Exclude Filetypes [default = none]
+    #[arg(short = 'T', long)]
+    pub exclude_types: Option<String>,
     /// Filetypes to deduplicate [default = all]
     #[arg(short, long)]
     pub types: Option<String>,
@@ -53,7 +57,45 @@ impl Params {
         Ok(dir)
     }
 
+    pub fn types_intersection(itypes: &str, xtypes: &str) -> String {
+        let iset = itypes
+            .split(",")
+            .map(String::from)
+            .collect::<HashSet<String>>();
+        let xset = xtypes
+            .split(",")
+            .map(String::from)
+            .collect::<HashSet<String>>();
+
+        iset.difference(&xset)
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(",")
+    }
+
     pub fn get_types(&self) -> Option<String> {
-        self.types.clone()
+        match &self.types {
+            Some(itypes) => match &self.exclude_types {
+                Some(xtypes) => Some(Self::types_intersection(itypes, xtypes)),
+                None => Some(itypes.to_string()),
+            },
+            None => self.exclude_types.as_ref().map(|xtypes| xtypes.to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mixing_include_and_exclude_types_works_as_expected() {
+        let params = Params {
+            types: Some(String::from("js,xml,ts,pdf,tiff")),
+            exclude_types: Some(String::from("js,ts,xml")),
+            ..Default::default()
+        };
+
+        assert_eq!(params.get_types(), Some(String::from("pdf,tiff")));
     }
 }
