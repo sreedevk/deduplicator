@@ -36,6 +36,10 @@ impl Formatter {
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
 
+    pub fn hash_hex(hash: &u128) -> Box<str> {
+        format!("{:32x}", hash).into_boxed_str()
+    }
+
     pub fn gen_sub_tbl(items: Vec<FileInfo>, app_args: &Params, max_path_len: u64) -> Table {
         let mut inner_table = Table::new();
         inner_table.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
@@ -71,7 +75,7 @@ impl Formatter {
             .filter(|i| i.value().len() > 1)
             .map(|i| {
                 row![
-                    i.key(),
+                    Self::hash_hex(i.key()),
                     Self::gen_sub_tbl(i.value().to_vec(), args, mpath_len)
                 ]
             })

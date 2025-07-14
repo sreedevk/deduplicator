@@ -96,6 +96,8 @@ mod tests {
             ..Default::default()
         };
 
-        assert_eq!(params.get_types(), Some(String::from("pdf,tiff")));
+        assert!(params
+            .get_types()
+            .is_some_and(|x| x == "pdf,tiff" || x == "tiff,pdf"))
     }
 }

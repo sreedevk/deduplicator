@@ -1,10 +1,8 @@
 use anyhow::Result;
 use dashmap::DashMap;
-use indicatif::{
-    MultiProgress, ParallelProgressIterator, ProgressBar, ProgressFinish, ProgressStyle,
-};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use rayon::iter::IntoParallelRefMutIterator;
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, TryLockError, TryLockResult};
 use std::time::Duration;
@@ -22,57 +20,68 @@ impl Processor {
         progress_bar_box: Arc<MultiProgress>,
         max_file_size: Arc<AtomicU64>,
         seed: i64,
+        sw_sorting_finished: Arc<AtomicBool>,
     ) -> Result<()> {
         let progress_bar = match app_args.progress {
             true => progress_bar_box.add(ProgressBar::new_spinner()),
             false => ProgressBar::hidden(),
         };
 
-        let keys: Vec<u64> = sw_store.clone().iter().map(|i| *i.key()).collect();
-
         let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
         progress_bar.set_style(progress_style);
         progress_bar.enable_steady_tick(Duration::from_millis(50));
         progress_bar.set_message("files grouped by hash.");
 
-        keys.into_par_iter()
-            .progress_with(progress_bar)
-            .with_finish(ProgressFinish::WithMessage(Cow::from(
-                "files grouped by hash.",
-            )))
-            .for_each(|key| {
-                let group: Vec<FileInfo> = sw_store.get(&key).unwrap().to_vec();
-                if group.len() > 1 {
-                    group.into_par_iter().for_each(|file| {
-                        let fhash = if app_args.strict {
-                            file.hash(seed).expect("hashing file failed.")
-                        } else {
-                            file.initial_page_hash(seed).expect("hashing file failed.")
-                        };
+        loop {
+            let keys: Vec<u64> = sw_store
+                .clone()
+                .iter()
+                .filter(|i| !i.value().iter().all(|x| x.is_sw_processed()))
+                .filter(|i| i.value().len() > 1)
+                .map(|i| *i.key())
+                .collect();
 
-                        Self::compare_and_update_max_path_len(
-                            max_file_size.clone(),
-                            file.path.to_string_lossy().len() as u64,
-                        )
-                        .unwrap();
-
-                        hw_store
-                            .entry(fhash)
-                            .and_modify(|fileset| fileset.push(file.clone()))
-                            .or_insert_with(|| vec![file]);
-                    });
+            if keys.is_empty() {
+                match sw_sorting_finished.load(std::sync::atomic::Ordering::Relaxed) {
+                    true => {
+                        progress_bar.finish_with_message("files grouped by hash.");
+                        break Ok(());
+                    }
+                    false => continue,
                 }
-            });
+            } else {
+                keys.into_par_iter().for_each(|key| {
+                    let mut group: Vec<FileInfo> = sw_store.get(&key).unwrap().to_vec();
+                    if group.len() > 1 {
+                        group.par_iter_mut().for_each(|file| {
+                            progress_bar.inc(1);
+                            file.sw_processed();
 
-        Ok(())
+                            let fhash = match app_args.strict {
+                                true => file.hash(seed).expect("hashing file failed."),
+                                false => file.initpage_hash(seed).expect("hashing file failed."),
+                            };
+
+                            Self::compare_and_update_max_path_len(
+                                max_file_size.clone(),
+                                file.path.to_string_lossy().len() as u64,
+                            );
+
+                            hw_store
+                                .entry(fhash)
+                                .and_modify(|fileset| fileset.push(file.clone()))
+                                .or_insert_with(|| vec![file.clone()]);
+                        });
+                    };
+                });
+            }
+        }
     }
 
-    pub fn compare_and_update_max_path_len(current: Arc<AtomicU64>, next: u64) -> Result<()> {
+    pub fn compare_and_update_max_path_len(current: Arc<AtomicU64>, next: u64) {
         if current.load(Ordering::Relaxed) < next {
             current.store(next, Ordering::Release);
         }
-
-        Ok(())
     }
 
     pub fn sizewise(
@@ -193,6 +202,7 @@ mod tests {
             Arc::new(MultiProgress::new()),
             Arc::new(AtomicU64::new(32)),
             300,
+            Arc::new(AtomicBool::new(true)),
         )?;
 
         assert_eq!(hw_dupstore.len(), 2);
@@ -245,6 +255,7 @@ mod tests {
             Arc::new(MultiProgress::new()),
             Arc::new(AtomicU64::new(32)),
             300,
+            Arc::new(AtomicBool::new(true)),
         )?;
 
         assert_eq!(hw_dupstore.len(), 1);
@@ -290,6 +301,7 @@ mod tests {
             Arc::new(MultiProgress::new()),
             Arc::new(AtomicU64::new(32)),
             300,
+            Arc::new(AtomicBool::new(true)),
         )?;
 
         assert_eq!(hw_dupstore.len(), 1);

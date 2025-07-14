@@ -43,13 +43,18 @@ impl Server {
         }
 
         let app_args_clone_for_sc = self.app_args.clone();
-        let app_args_clone_for_pr = self.app_args.clone();
+        let app_args_clone_for_sw = self.app_args.clone();
+        let app_args_clone_for_hw = self.app_args.clone();
         let file_queue_clone_sc = self.filequeue.clone();
         let file_queue_clone_pr = self.filequeue.clone();
         let scanner_finished = Arc::new(AtomicBool::new(false));
+        let sw_sort_finished = Arc::new(AtomicBool::new(false));
 
         let sfin_sc_tr_cl = scanner_finished.clone();
         let sfin_pr_tr_cl = scanner_finished.clone();
+
+        let swfin_pr_tr_sw = sw_sort_finished.clone();
+        let swfin_pr_tr_hw = sw_sort_finished.clone();
 
         let store_dupl_sw_for_sw = self.sw_duplicate_set.clone();
         let store_dupl_sw_for_hw = self.sw_duplicate_set.clone();
@@ -57,6 +62,8 @@ impl Server {
         let max_file_path_len_clone = self.max_file_path_len.clone();
 
         let progbarbox_sc_clone = progbarbox.clone();
+        let progbarbox_pr_clone_for_sw = progbarbox.clone();
+        let progbarbox_pr_clone_for_hw = progbarbox.clone();
 
         self.threadpool.execute(move || {
             Scanner::new(app_args_clone_for_sc)
@@ -67,25 +74,28 @@ impl Server {
             sfin_sc_tr_cl.store(true, std::sync::atomic::Ordering::Relaxed);
         });
 
-        let progbarbox_pr_clone = progbarbox.clone();
-
         self.threadpool.execute(move || {
             Processor::sizewise(
-                app_args_clone_for_pr.clone(),
+                app_args_clone_for_sw,
                 sfin_pr_tr_cl,
                 store_dupl_sw_for_sw,
                 file_queue_clone_pr,
-                progbarbox_pr_clone.clone(),
+                progbarbox_pr_clone_for_sw,
             )
             .unwrap();
 
+            swfin_pr_tr_sw.store(true, std::sync::atomic::Ordering::Relaxed);
+        });
+
+        self.threadpool.execute(move || {
             Processor::hashwise(
-                app_args_clone_for_pr,
+                app_args_clone_for_hw,
                 store_dupl_sw_for_hw,
                 store_dupl_hw,
-                progbarbox_pr_clone,
+                progbarbox_pr_clone_for_hw,
                 max_file_path_len_clone,
                 seed,
+                swfin_pr_tr_hw,
             )
             .unwrap();
         });
