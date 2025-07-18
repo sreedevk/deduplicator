@@ -33,9 +33,9 @@ impl FileInfo {
             .fold(0u128, |acc, chunk: &[u8]| acc ^ gxhash128(chunk, seed)))
     }
 
-    pub fn initpage_hash(&self, seed: i64) -> Result<u128> {
+    pub fn initpages_hash(&self, seed: i64) -> Result<u128> {
         let mut file = fs::File::open(&self.path)?;
-        let mut buffer = [0; 4096];
+        let mut buffer = [0; 16384];
         let bytes_read = file.read(&mut buffer)?;
 
         Ok(gxhash128(&buffer[..bytes_read], seed))

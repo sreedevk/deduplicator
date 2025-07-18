@@ -59,7 +59,7 @@ impl Processor {
 
                             let fhash = match app_args.strict {
                                 true => file.hash(seed).expect("hashing file failed."),
-                                false => file.initpage_hash(seed).expect("hashing file failed."),
+                                false => file.initpages_hash(seed).expect("hashing file failed."),
                             };
 
                             Self::compare_and_update_max_path_len(
@@ -153,9 +153,9 @@ mod tests {
     }
 
     #[test]
-    fn hashwise_sorting_two_files_with_identical_init_page_only_strict_mode() -> Result<()> {
+    fn hashwise_sorting_two_files_with_identical_init_pages_only_strict_mode() -> Result<()> {
         let root = TempDir::new()?;
-        let content = generate_bytes(4096);
+        let content = generate_bytes(16384);
 
         let mut content_x = content.clone();
         let mut content_y = content.clone();
@@ -211,9 +211,9 @@ mod tests {
     }
 
     #[test]
-    fn hashwise_sorting_two_files_with_identical_init_page_only_fast_mode() -> Result<()> {
+    fn hashwise_sorting_two_files_with_identical_init_pages_only_fast_mode() -> Result<()> {
         let root = TempDir::new()?;
-        let content = generate_bytes(4096);
+        let content = generate_bytes(16384);
 
         let mut content_x = content.clone();
         let mut content_y = content.clone();

@@ -168,6 +168,8 @@ dust 'bench_artifacts'
 ## v0.3.1
 - [x] parallelization
     - [x] (scanning + processing sw + processing hw) & formatting & printing
+- [ ] remove formatting step and write directly to stdout (tree mode)
+- [x] Increase the number of pages hashed in partial hashing
 
 ## v0.3.0
 - [x] parallelization
