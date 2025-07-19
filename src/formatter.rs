@@ -49,9 +49,16 @@ impl Formatter {
                     let subfields = sref
                         .value()
                         .par_iter()
-                        .map(|finfo| {
+                        .enumerate()
+                        .map(|(i, finfo)| {
+                            let nodechar = if i == sref.value().len() - 1 {
+                                "└─"
+                            } else {
+                                "├─"
+                            };
                             format!(
-                                "├─ {}\t{}\t{}\n",
+                                "{}\t{}\t{}\t{}\n",
+                                nodechar,
                                 Self::human_path(finfo, aargs, max_path_len as usize)
                                     .expect("path formatting failed."),
                                 Self::human_filesize(finfo).expect("filesize formatting failed."),
