@@ -177,10 +177,10 @@ dust 'bench_artifacts'
 - [ ] fix: partial hash collision - a file full of null bytes ("\0") and an empty file. This is a known trade off in gxhash.
     - [ ] include initial pages and final pages of the file 
     - [ ] append the offset between the last initial page hashed and the first final page hashed in the content passed to the hasher.
-- [ ] fix: --exclude-types and --types flag behave identically.
 
 ## v0.3.2
 - [x] fix: single file groups are printed to screen
+- [x] fix: --exclude-types and --types flag behave identically.
 
 ## v0.3.1
 - [x] parallelization
