@@ -50,7 +50,8 @@ deduplicator ~/Media --min-size 100mb
 ```
 
 ## Demo
-![record](https://github.com/user-attachments/assets/fcfdd9bf-4d05-41b6-a82e-367634eeaa73)
+![demo](https://github.com/user-attachments/assets/bdb95831-542d-4902-a458-4e0f5d171a33)
+
 
 
 
