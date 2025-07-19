@@ -61,14 +61,23 @@ Currently, you can only install deduplicator using cargo package manager.
 > GxHash relies on aes hardware acceleration, so please set `RUSTFLAGS` to `"-C target-feature=+aes"` or `"-C target-cpu=native"` before
 > installing.
 
-#### install from crates.io
+#### install from crates.io (stable)
+
 ```bash
 $ RUSTFLAGS="-C target-cpu=native" cargo install deduplicator
+
+# or
+
+$ RUSTFLAGS="-C target-feature=+aes,+sse2" cargo install deduplicator
 ```
 
-#### install from git
+#### install from git (nightly)
 ```bash
 $ RUSTFLAGS="-C target-cpu=native" cargo install deduplicator --git https://github.com/sreedevk/deduplicator
+
+# or
+
+$ RUSTFLAGS="-C target-feature=+aes,+sse2" cargo install --git https://github.com/sreedevk/deduplicator
 ```
 
 ## Performance
