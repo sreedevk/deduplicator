@@ -80,6 +80,12 @@ $ RUSTFLAGS="-C target-cpu=native" cargo install deduplicator --git https://gith
 $ RUSTFLAGS="-C target-feature=+aes,+sse2" cargo install --git https://github.com/sreedevk/deduplicator
 ```
 
+### Manual Installation
+- Download the right pre-compiled binary archive for your platform from [github release page](https://github.com/sreedevk/deduplicator/releases/tag/latest).
+- Decompress it using `tar -zxvf <archive>.tar.gz` 
+- Move it to a directory included in `$PATH`. 
+    - ideally `/usr/local/bin/`.
+
 ## Performance
 Deduplicator uses size comparison and [GxHash](https://docs.rs/gxhash/latest/gxhash/) to quickly check a large number of files to find duplicates. its also heavily parallelized. The default behavior of deduplicator is to only hash the first page (4K) of the file. This is to ensure that performance is the default priority. You can modify this behavior by using the `--strict` flag which will hash the whole file and ensure that 2 files are indeed duplicates. I'll add benchmarks in future versions.
 
@@ -169,6 +175,7 @@ dust 'bench_artifacts'
 - [ ] fix: partial hash collision - a file full of null bytes ("\0") and an empty file. This is a known trade off in gxhash.
     - [ ] include initial pages and final pages of the file 
     - [ ] append the offset between the last initial page hashed and the first final page hashed in the content passed to the hasher.
+- [ ] fix: --exclude-types and --types flag behave identically.
 
 ## v0.3.1
 - [x] parallelization
