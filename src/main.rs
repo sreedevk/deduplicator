@@ -24,7 +24,7 @@ fn main() -> Result<()> {
                 server.hw_duplicate_set,
                 server.max_file_path_len.load(Ordering::Acquire),
                 &app_args,
-            )?;
+            );
         }
         true => {
             Interactive::init(server.hw_duplicate_set, &app_args)?;
