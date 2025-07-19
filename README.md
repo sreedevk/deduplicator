@@ -170,6 +170,7 @@ dust 'bench_artifacts'
 - [x] updated dependencies
 - [x] fix: full file hash collision between a file full of null bytes ("\0") and an empty file. This is a known trade off in gxhash.
     - [x] appending the file size at the end of content before hashing.
+- [x] created an automated release pipeline
 
 ## v0.3.0
 - [x] parallelization
