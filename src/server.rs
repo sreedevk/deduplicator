@@ -67,9 +67,9 @@ impl Server {
 
         self.threadpool.execute(move || {
             Scanner::new(app_args_clone_for_sc)
-                .unwrap()
+                .expect("unable to initialize scanner.")
                 .scan(file_queue_clone_sc, progbarbox_sc_clone)
-                .unwrap();
+                .expect("scanner failed.");
 
             sfin_sc_tr_cl.store(true, std::sync::atomic::Ordering::Relaxed);
         });
@@ -82,7 +82,7 @@ impl Server {
                 file_queue_clone_pr,
                 progbarbox_pr_clone_for_sw,
             )
-            .unwrap();
+            .expect("sizewise scanner failed.");
 
             swfin_pr_tr_sw.store(true, std::sync::atomic::Ordering::Relaxed);
         });
@@ -97,7 +97,7 @@ impl Server {
                 seed,
                 swfin_pr_tr_hw,
             )
-            .unwrap();
+            .expect("sizewise scanner failed.");
         });
 
         progbarbox.clear()?;

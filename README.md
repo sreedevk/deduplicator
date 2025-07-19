@@ -157,6 +157,10 @@ dust 'bench_artifacts'
     - [ ] --keep-last-modified
     - [ ] --keep-first-modified
 
+- [ ] fix: partial hash collision - a file full of null bytes ("\0") and an empty file. This is a known trade off in gxhash.
+    - [ ] include initial pages and final pages of the file 
+    - [ ] append the offset between the last initial page hashed and the first final page hashed in the content passed to the hasher.
+
 ## v0.3.1
 - [x] parallelization
     - [x] (scanning + processing sw + processing hw) & formatting & printing
@@ -164,7 +168,8 @@ dust 'bench_artifacts'
 - [x] simplify output to improve performance
 - [x] increase the number of pages hashed in partial hashing
 - [x] updated dependencies
-- [ ] POTENTIAL INTERMITTENT BUG: --progress causes characters to be rendered out of order
+- [x] fix: full file hash collision between a file full of null bytes ("\0") and an empty file. This is a known trade off in gxhash.
+    - [x] appending the file size at the end of content before hashing.
 
 ## v0.3.0
 - [x] parallelization

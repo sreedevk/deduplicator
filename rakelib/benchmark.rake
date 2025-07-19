@@ -13,6 +13,7 @@ namespace :benchmark do
     # Range (min … max):     1.8 ms …   9.7 ms    1474 runs
 
     root = "bench_artifacts"
+    FileUtils.rm_rf(root)
     Dir.mkdir(root)
 
     # files with same size
