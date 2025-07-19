@@ -2,6 +2,7 @@ use crate::{fileinfo::FileInfo, formatter::Formatter, params::Params};
 use anyhow::Result;
 use dashmap::DashMap;
 use prettytable::{format, row, Table};
+use std::sync::atomic::AtomicU64;
 use std::{
     io::{self, Write},
     sync::Arc,
@@ -11,12 +12,19 @@ pub struct Interactive;
 
 impl Interactive {
     pub fn init(result: Arc<DashMap<u128, Vec<FileInfo>>>, app_args: &Params) -> Result<()> {
-        result
-            .clone()
+        let store = result.clone();
+        if store.is_empty() {
+            println!("No duplicates found matching your search criteria.");
+        }
+
+        let printed_count: AtomicU64 = AtomicU64::new(0);
+
+        store
             .iter()
             .filter(|i| i.value().len() > 1)
             .enumerate()
             .for_each(|(gindex, i)| {
+                printed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 let group = i.value();
                 let mut itable = Table::new();
                 itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
@@ -39,6 +47,10 @@ impl Interactive {
 
                 Self::process_group_action(group, gindex, result.len(), itable);
             });
+
+        if printed_count.load(std::sync::atomic::Ordering::Relaxed) < 1 {
+            println!("No duplicates found matching your search criteria.");
+        }
 
         Ok(())
     }

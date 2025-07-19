@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use dashmap::DashMap;
 use pathdiff::diff_paths;
 use rayon::prelude::*;
+use std::sync::atomic::AtomicU64;
 use std::{path::PathBuf, sync::Arc};
 
 const YELLOW: &str = "\x1b[33m";
@@ -39,26 +40,34 @@ impl Formatter {
         if raw.is_empty() {
             println!("No duplicates found matching your search criteria.");
         } else {
+            let printed_count: AtomicU64 = AtomicU64::new(0);
+
             raw.par_iter().for_each(|sref| {
-                let mut ostring = format!("{}{:32x}{}\n", YELLOW, sref.key(), RESET);
-                let subfields = sref
-                    .value()
-                    .par_iter()
-                    .map(|finfo| {
-                        format!(
-                            "├─ {}\t{}\t{}\n",
-                            Self::human_path(finfo, aargs, max_path_len as usize)
-                                .expect("path formatting failed."),
-                            Self::human_filesize(finfo).expect("filesize formatting failed."),
-                            Self::human_mtime(finfo).expect("modified time formatting failed.")
-                        )
-                    })
-                    .collect::<String>();
+                if sref.value().len() > 1 {
+                    printed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let mut ostring = format!("{}{:32x}{}\n", YELLOW, sref.key(), RESET);
+                    let subfields = sref
+                        .value()
+                        .par_iter()
+                        .map(|finfo| {
+                            format!(
+                                "├─ {}\t{}\t{}\n",
+                                Self::human_path(finfo, aargs, max_path_len as usize)
+                                    .expect("path formatting failed."),
+                                Self::human_filesize(finfo).expect("filesize formatting failed."),
+                                Self::human_mtime(finfo).expect("modified time formatting failed.")
+                            )
+                        })
+                        .collect::<String>();
 
-                ostring.push_str(&subfields);
-
-                println!("{ostring}");
+                    ostring.push_str(&subfields);
+                    println!("{ostring}");
+                }
             });
+
+            if printed_count.load(std::sync::atomic::Ordering::Relaxed) < 1 {
+                println!("No duplicates found matching your search criteria.");
+            }
         }
     }
 }

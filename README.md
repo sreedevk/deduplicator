@@ -155,6 +155,8 @@ dust 'bench_artifacts'
 ## proposed
 - [ ] parallelization
     - [ ] scanning + processing sw + processing hw + formatting + printing
+- [ ] user supplied cache file path for faster re-runs
+- [ ] hardlinks / symlinks support
 - [ ] max file path size should use the last set of duplicates
 - [ ] add more unit tests
     - [ ] test against different filesystems
@@ -176,6 +178,9 @@ dust 'bench_artifacts'
     - [ ] include initial pages and final pages of the file 
     - [ ] append the offset between the last initial page hashed and the first final page hashed in the content passed to the hasher.
 - [ ] fix: --exclude-types and --types flag behave identically.
+
+## v0.3.2
+- [x] fix: single file groups are printed to screen
 
 ## v0.3.1
 - [x] parallelization
