@@ -162,7 +162,9 @@ dust 'bench_artifacts'
     - [x] (scanning + processing sw + processing hw) & formatting & printing
 - [x] remove formatting step and write directly to stdout
 - [x] simplify output to improve performance
-- [x] Increase the number of pages hashed in partial hashing
+- [x] increase the number of pages hashed in partial hashing
+- [x] updated dependencies
+- [ ] POTENTIAL INTERMITTENT BUG: --progress causes characters to be rendered out of order
 
 ## v0.3.0
 - [x] parallelization

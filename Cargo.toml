@@ -18,14 +18,14 @@ path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 anyhow = "1.0.68"
-bytesize = "1.1.0"
+bytesize = "2.0.1"
 chrono = "0.4.23"
 clap = { version = "4.0.32", features = ["derive"] }
-dashmap = { version = "5.4.0", features = ["rayon"] }
-globwalk = "0.8.1"
+dashmap = { version = "6.1.0", features = ["rayon"] }
+globwalk = "0.9.1"
 gxhash = { version = "3.4.1", default-features = false }
-indicatif = { version = "0.17.2", features = ["rayon"] }
-memmap2 = "0.5.8"
+indicatif = { version = "0.18.0", features = ["rayon"] }
+memmap2 = "0.9.7"
 pathdiff = "0.2.1"
 prettytable-rs = "0.10.0"
 rand = "0.9.1"
