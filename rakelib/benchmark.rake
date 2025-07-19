@@ -16,6 +16,7 @@ namespace :benchmark do
     Dir.mkdir(root)
 
     # files with same size
+    puts "generating files of same size ..."
     2.times.map do |i|
       File.open(File.join(root, "file_#{i}_fwss.bin"), 'wb') do |f|
         f.write(SecureRandom.bytes(4096 * 100_000))
@@ -23,6 +24,7 @@ namespace :benchmark do
     end
 
     # files with different sizes
+    puts "generating files of different sizes ..."
     2.times.map do |i|
       File.open(File.join(root, "file_#{i}_fwds.bin"), 'wb') do |f|
         f.write(SecureRandom.bytes(4096 * (rand * 100_000).ceil))
@@ -30,6 +32,7 @@ namespace :benchmark do
     end
 
     # files with same content & size
+    puts "generating files of same content and sizes ..."
     2.times.each do |i|
       File.open(File.join(root, "file_#{i}_fwscas.bin"), 'wb') do |f|
         f.write("\0" * (4096 * 100_000))
@@ -37,6 +40,7 @@ namespace :benchmark do
     end
 
     # files with different content but same size
+    puts "generating files of different content but same sizes ..."
     2.times.each do |i|
       File.open(File.join(root, "file_#{i}_fwdcbss.bin"), 'wb') do |f|
         f.write(SecureRandom.bytes(4096 * 100_000))
@@ -58,6 +62,7 @@ namespace :benchmark do
     Dir.mkdir(root)
 
     # files with same size
+    puts "generating 1000 files of the same size ... "
     1000.times.each do |i|
       File.open(File.join(root, "file_#{i}_fwss.bin"), 'wb') do |f|
         f.write(SecureRandom.bytes(4096 * 1000))
@@ -65,6 +70,7 @@ namespace :benchmark do
     end
 
     # files with different sizes
+    puts "generating 1000 files of different sizes ... "
     1000.times.each do |i|
       File.open(File.join(root, "file_#{i}_fwds.bin"), 'wb') do |f|
         f.write(SecureRandom.bytes(4096 * (rand * 100).ceil))
@@ -72,6 +78,7 @@ namespace :benchmark do
     end
 
     # files with same content & size
+    puts "generating files of same content and sizes ..."
     1000.times.each do |i|
       File.open(File.join(root, "file_#{i}_fwscas.bin"), 'wb') do |f|
         f.write("\0" * (4096 * 1000))
@@ -79,6 +86,7 @@ namespace :benchmark do
     end
 
     # files with different content but same size
+    puts "generating files of different content but same sizes ..."
     1000.times.each do |i|
       File.open(File.join(root, "file_#{i}_fwdcbss.bin"), 'wb') do |f|
         f.write(SecureRandom.bytes(4096 * 1000))
