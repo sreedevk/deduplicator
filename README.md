@@ -178,6 +178,9 @@ dust 'bench_artifacts'
 - [ ] fix: partial hash collision - a file full of null bytes ("\0") and an empty file. This is a known trade off in gxhash.
     - [ ] include initial pages and final pages of the file 
     - [ ] append the offset between the last initial page hashed and the first final page hashed in the content passed to the hasher.
+- [ ] potential optimizations
+    -  [ ] lookup the memory efficiency gains if instead of directly inserting into a hashmap, deduplicator looksup the file in a bloom filter. this way, the duplicate store hashmap does
+       not require to be locked for every single file. The bloom filter can be stored in an atomically updateable type to improve performance as well.
 
 ## v0.3.2
 - [x] fix: single file groups are printed to screen
