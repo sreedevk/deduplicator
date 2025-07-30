@@ -6,6 +6,7 @@ use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, TryLockError, TryLockResult};
 use std::time::Duration;
+use unicode_segmentation::UnicodeSegmentation;
 
 use crate::fileinfo::FileInfo;
 use crate::params::Params;
@@ -64,7 +65,7 @@ impl Processor {
 
                             Self::compare_and_update_max_path_len(
                                 max_file_size.clone(),
-                                file.path.to_string_lossy().len() as u64,
+                                file.path.to_string_lossy().graphemes(true).count() as u64,
                             );
 
                             hw_store

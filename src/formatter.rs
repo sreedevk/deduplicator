@@ -12,14 +12,14 @@ const RESET: &str = "\x1b[0m";
 
 pub struct Formatter;
 impl Formatter {
-    pub fn human_path(file: &FileInfo, aargs: &Params, min_path_length: usize) -> Result<String> {
+    pub fn human_path(file: &FileInfo, aargs: &Params, max_path_length: usize) -> Result<String> {
         let base_directory: PathBuf = aargs.get_directory()?;
         let relative_path = diff_paths(&file.path, base_directory).unwrap_or_default();
 
         let formatted_path = format!(
             "{:<0width$}",
             relative_path.to_str().unwrap_or_default().to_string(),
-            width = min_path_length
+            width = max_path_length
         );
 
         Ok(formatted_path)
