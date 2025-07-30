@@ -169,6 +169,7 @@ dust 'bench_artifacts'
 - [ ] tui
 - [ ] change the default hashing method to include the first & last page of a file (8K)
 - [ ] provide option to localize duplicate detection to arbitrary levels relative to current directory
+- [ ] localize file meta store locks to sub path levels to avoid global lock contention from multiple threads.
 - [ ] bulk operations
     - [ ] --keep-latest
     - [ ] --keep-oldest
