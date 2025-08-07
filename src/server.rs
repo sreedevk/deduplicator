@@ -42,60 +42,68 @@ impl Server {
             progbarbox.set_draw_target(ProgressDrawTarget::hidden());
         }
 
-        let app_args_clone_for_sc = self.app_args.clone();
-        let app_args_clone_for_sw = self.app_args.clone();
-        let app_args_clone_for_hw = self.app_args.clone();
-        let file_queue_clone_sc = self.filequeue.clone();
-        let file_queue_clone_pr = self.filequeue.clone();
+        let (app_args_sc, app_args_sw, app_args_hw) = (
+            Arc::clone(&self.app_args),
+            Arc::clone(&self.app_args),
+            Arc::clone(&self.app_args),
+        );
+        let (file_queue_sc, file_queue_pr) = (
+            Arc::clone(&self.filequeue),
+            Arc::clone(&self.filequeue),
+        );
         let scanner_finished = Arc::new(AtomicBool::new(false));
         let sw_sort_finished = Arc::new(AtomicBool::new(false));
-
-        let sfin_sc_tr_cl = scanner_finished.clone();
-        let sfin_pr_tr_cl = scanner_finished.clone();
-
-        let swfin_pr_tr_sw = sw_sort_finished.clone();
-        let swfin_pr_tr_hw = sw_sort_finished.clone();
-
-        let store_dupl_sw_for_sw = self.sw_duplicate_set.clone();
-        let store_dupl_sw_for_hw = self.sw_duplicate_set.clone();
-        let store_dupl_hw = self.hw_duplicate_set.clone();
-        let max_file_path_len_clone = self.max_file_path_len.clone();
-
-        let progbarbox_sc_clone = progbarbox.clone();
-        let progbarbox_pr_clone_for_sw = progbarbox.clone();
-        let progbarbox_pr_clone_for_hw = progbarbox.clone();
+        let (sfin_sc, sfin_pr) = (
+            Arc::clone(&scanner_finished),
+            Arc::clone(&scanner_finished),
+        );
+        let (swfin_pr_sw, swfin_pr_hw) = (
+            Arc::clone(&sw_sort_finished),
+            Arc::clone(&sw_sort_finished),
+        );
+        let (store_sw, store_sw2, store_hw) = (
+            Arc::clone(&self.sw_duplicate_set),
+            Arc::clone(&self.sw_duplicate_set),
+            Arc::clone(&self.hw_duplicate_set),
+        );
+        let max_file_path_len = Arc::clone(&self.max_file_path_len);
+        let (prog_sc, prog_sw, prog_hw) = (
+            Arc::clone(&progbarbox),
+            Arc::clone(&progbarbox),
+            Arc::clone(&progbarbox),
+        );
 
         self.threadpool.execute(move || {
-            Scanner::new(app_args_clone_for_sc)
+            Scanner::new(app_args_sc)
                 .expect("unable to initialize scanner.")
-                .scan(file_queue_clone_sc, progbarbox_sc_clone)
+                .scan(file_queue_sc, prog_sc)
                 .expect("scanner failed.");
 
-            sfin_sc_tr_cl.store(true, std::sync::atomic::Ordering::Relaxed);
+            sfin_sc.store(true, std::sync::atomic::Ordering::Relaxed);
         });
 
         self.threadpool.execute(move || {
             Processor::sizewise(
-                app_args_clone_for_sw,
-                sfin_pr_tr_cl,
-                store_dupl_sw_for_sw,
-                file_queue_clone_pr,
-                progbarbox_pr_clone_for_sw,
+                app_args_sw,
+                sfin_pr,
+                store_sw,
+                file_queue_pr,
+                prog_sw,
             )
             .expect("sizewise scanner failed.");
 
-            swfin_pr_tr_sw.store(true, std::sync::atomic::Ordering::Relaxed);
+            swfin_pr_sw.store(true, std::sync::atomic::Ordering::Relaxed);
         });
 
         self.threadpool.execute(move || {
             Processor::hashwise(
-                app_args_clone_for_hw,
-                store_dupl_sw_for_hw,
-                store_dupl_hw,
-                progbarbox_pr_clone_for_hw,
-                max_file_path_len_clone,
+                app_args_hw,
+                store_sw2,
+                store_hw,
+                prog_hw,
+                max_file_path_len,
                 seed,
-                swfin_pr_tr_hw,
+                swfin_pr_hw,
             )
             .expect("sizewise scanner failed.");
         });
