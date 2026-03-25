@@ -79,7 +79,7 @@ impl Server {
                 .scan(file_queue_sc, prog_sc)
                 .expect("scanner failed.");
 
-            sfin_sc.store(true, std::sync::atomic::Ordering::Relaxed);
+            sfin_sc.store(true, std::sync::atomic::Ordering::Release);
         });
 
         self.threadpool.execute(move || {
@@ -92,7 +92,7 @@ impl Server {
             )
             .expect("sizewise scanner failed.");
 
-            swfin_pr_sw.store(true, std::sync::atomic::Ordering::Relaxed);
+            swfin_pr_sw.store(true, std::sync::atomic::Ordering::Release);
         });
 
         self.threadpool.execute(move || {

@@ -56,4 +56,7 @@ targets = [
 cargo-dist-version = "0.0.7"
 
 [dev-dependencies]
+assert_cmd = "2"
+predicates = "3"
 tempfile = "3.20.0"
+filetime = "0.2"

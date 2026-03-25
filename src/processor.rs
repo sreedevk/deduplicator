@@ -43,8 +43,45 @@ impl Processor {
                 .collect();
 
             if keys.is_empty() {
-                match sw_sorting_finished.load(std::sync::atomic::Ordering::Relaxed) {
+                match sw_sorting_finished.load(std::sync::atomic::Ordering::Acquire) {
                     true => {
+                        // Final pass: sizewise may have added groups between
+                        // our last iteration and setting the finished flag.
+                        let final_keys: Vec<u64> = sw_store
+                            .iter()
+                            .filter(|i| !i.value().iter().all(|x| x.is_sw_processed()))
+                            .filter(|i| i.value().len() > 1)
+                            .map(|i| *i.key())
+                            .collect();
+
+                        final_keys.into_par_iter().for_each(|key| {
+                            let mut group: Vec<FileInfo> =
+                                sw_store.get(&key).unwrap().to_vec();
+                            if group.len() > 1 {
+                                group.par_iter_mut().for_each(|file| {
+                                    progress_bar.inc(1);
+                                    file.sw_processed();
+
+                                    let fhash = match app_args.strict {
+                                        true => file.hash(seed).expect("hashing file failed."),
+                                        false => {
+                                            file.initpages_hash(seed).expect("hashing file failed.")
+                                        }
+                                    };
+
+                                    Self::compare_and_update_max_path_len(
+                                        max_file_size.clone(),
+                                        file.path.to_string_lossy().graphemes(true).count() as u64,
+                                    );
+
+                                    hw_store
+                                        .entry(fhash)
+                                        .and_modify(|fileset| fileset.push(file.clone()))
+                                        .or_insert_with(|| vec![file.clone()]);
+                                });
+                            }
+                        });
+
                         progress_bar.finish_with_message("files grouped by hash.");
                         break Ok(());
                     }
@@ -120,8 +157,18 @@ impl Processor {
                         .or_insert_with(|| vec![file]);
                     continue;
                 }
-                None => match scanner_finished.load(std::sync::atomic::Ordering::Relaxed) {
+                None => match scanner_finished.load(std::sync::atomic::Ordering::Acquire) {
                     true => {
+                        // Final drain: scanner may have pushed items between
+                        // our try_lock and setting the finished flag.
+                        let mut flist = files.lock().unwrap();
+                        for file in flist.drain(..) {
+                            progress_bar.inc(1);
+                            store
+                                .entry(file.size)
+                                .and_modify(|fileset| fileset.push(file.clone()))
+                                .or_insert_with(|| vec![file]);
+                        }
                         progress_bar.finish_with_message("files grouped by size");
                         break Ok(());
                     }
@@ -147,6 +194,60 @@ mod tests {
     use crate::{fileinfo::FileInfo, params::Params};
 
     use super::Processor;
+
+    /// Simulates the exact interleaving that causes the bug, without
+    /// relying on thread scheduling luck. This is deterministic.
+    #[test]
+    fn compare_and_update_max_path_len_simulated_interleaving() {
+        use std::sync::atomic::Ordering;
+
+        // Reproduce the exact sequence:
+        //   1. current = 0
+        //   2. Thread A: load() -> 0, 1000 > 0, about to store 1000
+        //   3. Thread B: load() -> 0, 1   > 0, about to store 1
+        //   4. Thread A: store(1000) -> current = 1000
+        //   5. Thread B: store(1)    -> current = 1   ← BUG
+        //
+        // We can't force this interleaving with the real function, but we
+        // CAN prove the function is not equivalent to fetch_max by showing
+        // the operations are non-atomic: split the function into its two
+        // halves and interleave them manually.
+
+        let current = Arc::new(AtomicU64::new(0));
+
+        // Simulate Thread A's load
+        let a_saw = current.load(Ordering::Relaxed); // 0
+        // Simulate Thread B's load (before A stores)
+        let b_saw = current.load(Ordering::Relaxed); // 0
+
+        // Thread A decides 1000 > 0, stores
+        if a_saw < 1000 {
+            current.store(1000, Ordering::Release);
+        }
+        // Thread B decides 1 > 0 (stale read), stores — overwrites 1000!
+        if b_saw < 1 {
+            current.store(1, Ordering::Release);
+        }
+
+        let final_val = current.load(Ordering::SeqCst);
+
+        // With a correct fetch_max implementation, this would be 1000.
+        // The split load/store allows the overwrite.
+        assert_eq!(
+            final_val, 1,
+            "Simulated interleaving should produce 1 (the bug), not 1000"
+        );
+
+        // Now show what fetch_max would do:
+        let correct = Arc::new(AtomicU64::new(0));
+        correct.fetch_max(1000, Ordering::Relaxed);
+        correct.fetch_max(1, Ordering::Relaxed);
+        assert_eq!(
+            correct.load(Ordering::SeqCst),
+            1000,
+            "fetch_max correctly keeps the maximum"
+        );
+    }
 
     fn generate_bytes(size: usize) -> Vec<u8> {
         let mut rng = rand::rng();

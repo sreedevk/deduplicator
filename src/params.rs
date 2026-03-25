@@ -1,7 +1,15 @@
 use std::{fs, path::PathBuf};
 
 use anyhow::Result;
-use clap::{Parser, ValueHint};
+use clap::{Parser, ValueEnum, ValueHint};
+
+#[derive(Clone, Debug, ValueEnum, PartialEq)]
+pub enum KeepStrategy {
+    /// Keep the most recently modified file
+    Newest,
+    /// Keep the oldest modified file
+    Oldest,
+}
 
 #[derive(Parser, Debug, Default, Clone)]
 #[command(author, version, about, long_about = None)]
@@ -36,6 +44,12 @@ pub struct Params {
     /// Show Progress spinners & metrics
     #[arg(long, short = 'p', default_value = "false")]
     pub progress: bool,
+    /// Keep the newest or oldest file in each duplicate group (dry-run by default)
+    #[arg(long, short = 'k', value_enum, conflicts_with = "interactive")]
+    pub keep: Option<KeepStrategy>,
+    /// Actually delete files (requires --keep)
+    #[arg(long, requires = "keep")]
+    pub delete: bool,
 }
 
 impl Params {

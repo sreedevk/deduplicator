@@ -1,3 +1,4 @@
+mod bulk;
 mod fileinfo;
 mod formatter;
 mod interactive;
@@ -6,7 +7,7 @@ mod processor;
 mod scanner;
 mod server;
 
-use self::{formatter::Formatter, interactive::Interactive, server::Server};
+use self::{bulk::Bulk, formatter::Formatter, interactive::Interactive, server::Server};
 use anyhow::Result;
 use clap::Parser;
 use params::Params;
@@ -18,16 +19,25 @@ fn main() -> Result<()> {
 
     server.start()?;
 
-    match app_args.interactive {
-        false => {
+    match (&app_args.keep, app_args.interactive) {
+        (Some(strategy), _) => {
+            Bulk::execute(
+                server.hw_duplicate_set,
+                strategy,
+                app_args.delete,
+                &app_args,
+                server.max_file_path_len.load(Ordering::Acquire) as usize,
+            )?;
+        }
+        (None, true) => {
+            Interactive::init(server.hw_duplicate_set, &app_args)?;
+        }
+        (None, false) => {
             Formatter::print(
                 server.hw_duplicate_set,
                 server.max_file_path_len.load(Ordering::Acquire),
                 &app_args,
             );
-        }
-        true => {
-            Interactive::init(server.hw_duplicate_set, &app_args)?;
         }
     };
 
