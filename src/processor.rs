@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
+use crate::cache::{mtime_nanos, Cache};
 use crate::fileinfo::FileInfo;
 use crate::pipeline::{spinner, DuplicateGroup};
 
@@ -18,28 +19,36 @@ pub fn group_by_size(files: Vec<FileInfo>, progress: bool) -> Vec<Vec<FileInfo>>
     buckets.into_values().collect()
 }
 
-pub fn group_by_hash(
+pub fn hash_candidates(
     candidates: Vec<FileInfo>,
     strict: bool,
     seed: i64,
     progress: bool,
-) -> Vec<DuplicateGroup> {
+    cache: &Cache,
+) -> Vec<(u128, FileInfo)> {
     let bar = spinner(progress, "files grouped by hash");
 
     let hashed: Vec<(u128, FileInfo)> = candidates
         .into_par_iter()
         .map(|file| {
             bar.inc(1);
-            let hash = match strict {
-                true => file.hash(seed).expect("hashing file failed."),
-                false => file.initpages_hash(seed).expect("hashing file failed."),
+            let mtime = mtime_nanos(file.modified);
+            let hash = match cache.lookup(&file.path, file.size, mtime, strict) {
+                Some(cached) => cached,
+                None => match strict {
+                    true => file.hash(seed).expect("hashing file failed."),
+                    false => file.initpages_hash(seed).expect("hashing file failed."),
+                },
             };
             (hash, file)
         })
         .collect();
 
     bar.finish_with_message("files grouped by hash.");
+    hashed
+}
 
+pub fn group_hashed(hashed: Vec<(u128, FileInfo)>) -> Vec<DuplicateGroup> {
     let mut buckets: HashMap<u128, Vec<FileInfo>> = HashMap::new();
     for (hash, file) in hashed {
         buckets.entry(hash).or_default().push(file);
@@ -126,7 +135,7 @@ mod staged_tests {
             vec![("fileone.bin", content_x), ("filetwo.bin", content_y)],
         )?;
 
-        let groups = super::group_by_hash(files, false, 300, false);
+        let groups = super::group_hashed(super::hash_candidates(files, false, 300, false, &crate::cache::Cache::disabled()));
         assert_eq!(groups.len(), 1);
         Ok(())
     }
@@ -146,7 +155,7 @@ mod staged_tests {
             vec![("fileone.bin", content_x), ("filetwo.bin", content_y)],
         )?;
 
-        let groups = super::group_by_hash(files, true, 300, false);
+        let groups = super::group_hashed(super::hash_candidates(files, true, 300, false, &crate::cache::Cache::disabled()));
         assert_eq!(groups.len(), 0);
         Ok(())
     }
@@ -164,8 +173,42 @@ mod staged_tests {
             ],
         )?;
 
-        let groups = super::group_by_hash(files, false, 300, false);
+        let groups = super::group_hashed(super::hash_candidates(files, false, 300, false, &crate::cache::Cache::disabled()));
         assert_eq!(groups.len(), 1);
         Ok(())
+    }
+
+    #[test]
+    fn hash_candidates_uses_cached_hash_when_valid() {
+        let root = TempDir::new().unwrap();
+        let path = root.path().join("f.bin");
+        let mut f = File::create_new(&path).unwrap();
+        f.write_all(b"real content for cache hit test").unwrap();
+        let info = FileInfo::new(path.clone()).unwrap();
+        let mtime = crate::cache::mtime_nanos(info.modified);
+
+        let mut cache = crate::cache::Cache::disabled();
+        cache.record(&path, info.size, mtime, false, 0xDEAD_BEEF, 0);
+
+        let hashed = super::hash_candidates(vec![info], false, 300, false, &cache);
+        assert_eq!(hashed[0].0, 0xDEAD_BEEF);
+    }
+
+    #[test]
+    fn hash_candidates_recomputes_when_mtime_differs() {
+        let root = TempDir::new().unwrap();
+        let path = root.path().join("f.bin");
+        let mut f = File::create_new(&path).unwrap();
+        f.write_all(b"real content for cache miss test").unwrap();
+        let info = FileInfo::new(path.clone()).unwrap();
+        let mtime = crate::cache::mtime_nanos(info.modified);
+        let real = info.initpages_hash(300).unwrap();
+
+        let mut cache = crate::cache::Cache::disabled();
+        cache.record(&path, info.size, mtime + 1, false, 0xDEAD_BEEF, 0);
+
+        let hashed = super::hash_candidates(vec![info], false, 300, false, &cache);
+        assert_eq!(hashed[0].0, real);
+        assert_ne!(hashed[0].0, 0xDEAD_BEEF);
     }
 }

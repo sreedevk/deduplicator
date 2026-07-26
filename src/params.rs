@@ -42,6 +42,12 @@ pub struct Params {
     /// Show Progress spinners & metrics
     #[arg(long, short = 'p', default_value = "false")]
     pub progress: bool,
+    /// Disable the on-disk hash cache
+    #[arg(long)]
+    pub no_cache: bool,
+    /// Use a specific cache file instead of the default location
+    #[arg(long, value_name = "PATH")]
+    pub cache_file: Option<PathBuf>,
 }
 
 impl Params {

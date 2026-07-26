@@ -1,3 +1,4 @@
+mod cache;
 mod fileinfo;
 mod formatter;
 mod interactive;
