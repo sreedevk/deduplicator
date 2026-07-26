@@ -18,6 +18,12 @@ pub struct Params {
     /// Delete files interactively
     #[arg(long, short)]
     pub interactive: bool,
+    /// Keep one file per duplicate group by this rule and remove the rest
+    #[arg(long, conflicts_with = "interactive")]
+    pub keep: Option<crate::resolver::KeepStrategy>,
+    /// Actually delete the duplicates (without this, --keep only previews)
+    #[arg(long, visible_alias = "yes", requires = "keep")]
+    pub force: bool,
     /// Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T).
     #[arg(long, short = 'm', default_value = "1b")]
     pub min_size: Option<String>,
@@ -36,6 +42,15 @@ pub struct Params {
     /// Show Progress spinners & metrics
     #[arg(long, short = 'p', default_value = "false")]
     pub progress: bool,
+    /// Disable the on-disk hash cache
+    #[arg(long)]
+    pub no_cache: bool,
+    /// Use a specific cache file instead of the default location
+    #[arg(long, value_name = "PATH")]
+    pub cache_file: Option<PathBuf>,
+    /// Browse and resolve duplicates in an interactive terminal UI
+    #[arg(long, conflicts_with_all = ["keep", "interactive"])]
+    pub tui: bool,
 }
 
 impl Params {

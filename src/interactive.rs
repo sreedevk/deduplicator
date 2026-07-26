@@ -1,56 +1,41 @@
-use crate::{fileinfo::FileInfo, formatter::Formatter, params::Params};
+use crate::{fileinfo::FileInfo, formatter::Formatter, params::Params, pipeline::DuplicateGroup};
 use anyhow::Result;
-use dashmap::DashMap;
 use prettytable::{format, row, Table};
-use std::sync::atomic::AtomicU64;
-use std::{
-    io::{self, Write},
-    sync::Arc,
-};
+use std::io::{self, Write};
+use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Interactive;
 
 impl Interactive {
-    pub fn init(result: Arc<DashMap<u128, Vec<FileInfo>>>, app_args: &Params) -> Result<()> {
-        let store = result.clone();
-        if store.is_empty() {
+    pub fn init(groups: &[DuplicateGroup], app_args: &Params) -> Result<()> {
+        if groups.is_empty() {
             println!("No duplicates found matching your search criteria.");
+            return Ok(());
         }
 
-        let printed_count: AtomicU64 = AtomicU64::new(0);
+        groups.iter().enumerate().for_each(|(gindex, group)| {
+            let files = &group.files;
+            let mut itable = Table::new();
+            itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
+            itable.set_titles(row!["index", "filename", "size", "updated_at"]);
 
-        store
-            .iter()
-            .filter(|i| i.value().len() > 1)
-            .enumerate()
-            .for_each(|(gindex, i)| {
-                printed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let group = i.value();
-                let mut itable = Table::new();
-                itable.set_format(*format::consts::FORMAT_NO_BORDER_LINE_SEPARATOR);
-                itable.set_titles(row!["index", "filename", "size", "updated_at"]);
+            let max_path_size = files
+                .iter()
+                .map(|f| f.path.to_string_lossy().graphemes(true).count())
+                .max()
+                .unwrap_or_default();
 
-                let max_path_size = group
-                    .iter()
-                    .map(|f| f.path.iter().count())
-                    .max()
-                    .unwrap_or_default();
-
-                group.iter().enumerate().for_each(|(index, file)| {
-                    itable.add_row(row![
-                        index,
-                        Formatter::human_path(file, app_args, max_path_size).unwrap_or_default(),
-                        Formatter::human_filesize(file).unwrap_or_default(),
-                        Formatter::human_mtime(file).unwrap_or_default()
-                    ]);
-                });
-
-                Self::process_group_action(group, gindex, result.len(), itable);
+            files.iter().enumerate().for_each(|(index, file)| {
+                itable.add_row(row![
+                    index,
+                    Formatter::human_path(file, app_args, max_path_size).unwrap_or_default(),
+                    Formatter::human_filesize(file).unwrap_or_default(),
+                    Formatter::human_mtime(file).unwrap_or_default()
+                ]);
             });
 
-        if printed_count.load(std::sync::atomic::Ordering::Relaxed) < 1 {
-            println!("No duplicates found matching your search criteria.");
-        }
+            Self::process_group_action(files, gindex, groups.len(), itable);
+        });
 
         Ok(())
     }

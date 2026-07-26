@@ -1,382 +1,214 @@
-use anyhow::Result;
-use dashmap::DashMap;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use rayon::iter::IntoParallelRefMutIterator;
+use std::collections::HashMap;
+
 use rayon::prelude::{IntoParallelIterator, ParallelIterator};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex, TryLockError, TryLockResult};
-use std::time::Duration;
-use unicode_segmentation::UnicodeSegmentation;
 
+use crate::cache::{mtime_nanos, Cache};
 use crate::fileinfo::FileInfo;
-use crate::params::Params;
+use crate::pipeline::{spinner, DuplicateGroup};
 
-pub struct Processor {}
+pub fn group_by_size(files: Vec<FileInfo>, progress: bool) -> Vec<Vec<FileInfo>> {
+    let bar = spinner(progress, "files grouped by size");
 
-impl Processor {
-    pub fn hashwise(
-        app_args: Arc<Params>,
-        sw_store: Arc<DashMap<u64, Vec<FileInfo>>>,
-        hw_store: Arc<DashMap<u128, Vec<FileInfo>>>,
-        progress_bar_box: Arc<MultiProgress>,
-        max_file_size: Arc<AtomicU64>,
-        seed: i64,
-        sw_sorting_finished: Arc<AtomicBool>,
-    ) -> Result<()> {
-        let progress_bar = match app_args.progress {
-            true => progress_bar_box.add(ProgressBar::new_spinner()),
-            false => ProgressBar::hidden(),
-        };
-
-        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        progress_bar.set_style(progress_style);
-        progress_bar.enable_steady_tick(Duration::from_millis(50));
-        progress_bar.set_message("files grouped by hash.");
-
-        loop {
-            let keys: Vec<u64> = sw_store
-                .clone()
-                .iter()
-                .filter(|i| !i.value().iter().all(|x| x.is_sw_processed()))
-                .filter(|i| i.value().len() > 1)
-                .map(|i| *i.key())
-                .collect();
-
-            if keys.is_empty() {
-                match sw_sorting_finished.load(std::sync::atomic::Ordering::Relaxed) {
-                    true => {
-                        progress_bar.finish_with_message("files grouped by hash.");
-                        break Ok(());
-                    }
-                    false => continue,
-                }
-            } else {
-                keys.into_par_iter().for_each(|key| {
-                    let mut group: Vec<FileInfo> = sw_store.get(&key).unwrap().to_vec();
-                    if group.len() > 1 {
-                        group.par_iter_mut().for_each(|file| {
-                            progress_bar.inc(1);
-                            file.sw_processed();
-
-                            let fhash = match app_args.strict {
-                                true => file.hash(seed).expect("hashing file failed."),
-                                false => file.initpages_hash(seed).expect("hashing file failed."),
-                            };
-
-                            Self::compare_and_update_max_path_len(
-                                max_file_size.clone(),
-                                file.path.to_string_lossy().graphemes(true).count() as u64,
-                            );
-
-                            hw_store
-                                .entry(fhash)
-                                .and_modify(|fileset| fileset.push(file.clone()))
-                                .or_insert_with(|| vec![file.clone()]);
-                        });
-                    };
-                });
-            }
-        }
+    let mut buckets: HashMap<u64, Vec<FileInfo>> = HashMap::new();
+    for file in files {
+        bar.inc(1);
+        buckets.entry(file.size).or_default().push(file);
     }
 
-    pub fn compare_and_update_max_path_len(current: Arc<AtomicU64>, next: u64) {
-        if current.load(Ordering::Relaxed) < next {
-            current.store(next, Ordering::Release);
-        }
-    }
+    bar.finish_with_message("files grouped by size");
+    buckets.into_values().collect()
+}
 
-    pub fn sizewise(
-        app_args: Arc<Params>,
-        scanner_finished: Arc<AtomicBool>,
-        store: Arc<DashMap<u64, Vec<FileInfo>>>,
-        files: Arc<Mutex<Vec<FileInfo>>>,
-        progress_bar_box: Arc<MultiProgress>,
-    ) -> Result<()> {
-        let progress_bar = match app_args.progress {
-            true => progress_bar_box.add(ProgressBar::new_spinner()),
-            false => ProgressBar::hidden(),
-        };
+pub fn hash_candidates(
+    candidates: Vec<FileInfo>,
+    strict: bool,
+    seed: i64,
+    progress: bool,
+    cache: &Cache,
+) -> Vec<(u128, FileInfo)> {
+    let bar = spinner(progress, "files grouped by hash");
 
-        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        progress_bar.set_style(progress_style);
-        progress_bar.enable_steady_tick(Duration::from_millis(50));
-        progress_bar.set_message("files grouped by size");
-
-        loop {
-            let fileopt: Option<FileInfo> = {
-                match files.try_lock() {
-                    Ok(mut flist) => flist.pop(),
-                    TryLockResult::Err(TryLockError::WouldBlock) => None,
-                    _ => None,
-                }
-            };
-
-            match fileopt {
-                Some(file) => {
-                    progress_bar.inc(1);
-                    store
-                        .entry(file.size)
-                        .and_modify(|fileset| fileset.push(file.clone()))
-                        .or_insert_with(|| vec![file]);
-                    continue;
-                }
-                None => match scanner_finished.load(std::sync::atomic::Ordering::Relaxed) {
-                    true => {
-                        progress_bar.finish_with_message("files grouped by size");
-                        break Ok(());
-                    }
-                    false => continue,
+    let hashed: Vec<(u128, FileInfo)> = candidates
+        .into_par_iter()
+        .map(|file| {
+            bar.inc(1);
+            let mtime = mtime_nanos(file.modified);
+            let hash = match cache.lookup(&file.path, file.size, mtime, strict) {
+                Some(cached) => cached,
+                None => match strict {
+                    true => file.hash(seed).expect("hashing file failed."),
+                    false => file.initpages_hash(seed).expect("hashing file failed."),
                 },
-            }
-        }
+            };
+            (hash, file)
+        })
+        .collect();
+
+    bar.finish_with_message("files grouped by hash.");
+    hashed
+}
+
+pub fn group_hashed(hashed: Vec<(u128, FileInfo)>) -> Vec<DuplicateGroup> {
+    let mut buckets: HashMap<u128, Vec<FileInfo>> = HashMap::new();
+    for (hash, file) in hashed {
+        buckets.entry(hash).or_default().push(file);
     }
+
+    buckets
+        .into_iter()
+        .filter(|(_, files)| files.len() > 1)
+        .map(|(hash, files)| DuplicateGroup { hash, files })
+        .collect()
 }
 
 #[cfg(test)]
-mod tests {
+mod staged_tests {
     use anyhow::Result;
-    use dashmap::DashMap;
-    use indicatif::MultiProgress;
     use rand::Rng;
     use std::fs::File;
     use std::io::Write;
-    use std::sync::atomic::{AtomicBool, AtomicU64};
-    use std::sync::{Arc, Mutex};
     use tempfile::TempDir;
 
-    use crate::{fileinfo::FileInfo, params::Params};
-
-    use super::Processor;
+    use crate::fileinfo::FileInfo;
 
     fn generate_bytes(size: usize) -> Vec<u8> {
         let mut rng = rand::rng();
         (0..size).map(|_| rng.random::<u8>()).collect::<Vec<u8>>()
     }
 
+    fn write_files(root: &TempDir, specs: Vec<(&str, Vec<u8>)>) -> Result<Vec<FileInfo>> {
+        specs
+            .into_iter()
+            .map(|(name, content)| {
+                let path = root.path().join(name);
+                let mut file = File::create_new(&path)?;
+                file.write_all(&content)?;
+                FileInfo::new(path)
+            })
+            .collect()
+    }
+
     #[test]
-    fn hashwise_sorting_two_files_with_identical_init_pages_only_strict_mode() -> Result<()> {
+    fn group_by_size_separates_files_of_different_sizes() -> Result<()> {
         let root = TempDir::new()?;
-        let content = generate_bytes(16384);
-
-        let mut content_x = content.clone();
-        let mut content_y = content.clone();
-
-        content_x.extend(generate_bytes(1720320));
-        content_y.extend(generate_bytes(1720320));
-
-        let files = [
-            (root.path().join("fileone.bin"), content_x),
-            (root.path().join("filetwo.bin"), content_y),
-        ];
-
-        for (fpath, content) in files.iter() {
-            let mut f = File::create_new(fpath)?;
-            f.write_all(content)?;
-        }
-
-        let dupstore = Arc::new(DashMap::new());
-        let file_queue = Arc::new(Mutex::new(
-            files
-                .iter()
-                .map(|f| FileInfo::new(f.0.clone()).unwrap())
-                .collect::<Vec<FileInfo>>(),
-        ));
-
-        let hw_dupstore = Arc::new(DashMap::new());
-        Processor::sizewise(
-            Arc::new(Params::default()),
-            Arc::new(AtomicBool::new(true)),
-            dupstore.clone(),
-            file_queue,
-            Arc::new(MultiProgress::new()),
+        let files = write_files(
+            &root,
+            vec![
+                ("fileone.bin", generate_bytes(282624)),
+                ("filetwo.bin", generate_bytes(1720320)),
+            ],
         )?;
 
-        let args = Params {
-            strict: true,
-            ..Default::default()
-        };
-
-        Processor::hashwise(
-            Arc::new(args),
-            dupstore.clone(),
-            hw_dupstore.clone(),
-            Arc::new(MultiProgress::new()),
-            Arc::new(AtomicU64::new(32)),
-            300,
-            Arc::new(AtomicBool::new(true)),
-        )?;
-
-        assert_eq!(hw_dupstore.len(), 2);
-
+        let groups = super::group_by_size(files, false);
+        assert_eq!(groups.len(), 2);
         Ok(())
     }
 
     #[test]
-    fn hashwise_sorting_two_files_with_identical_init_pages_only_fast_mode() -> Result<()> {
+    fn group_by_size_buckets_same_size_files_together() -> Result<()> {
         let root = TempDir::new()?;
-        let content = generate_bytes(16384);
-
-        let mut content_x = content.clone();
-        let mut content_y = content.clone();
-
-        content_x.extend(generate_bytes(1720320));
-        content_y.extend(generate_bytes(1720320));
-
-        let files = [
-            (root.path().join("fileone.bin"), content_x),
-            (root.path().join("filetwo.bin"), content_y),
-        ];
-
-        for (fpath, content) in files.iter() {
-            let mut f = File::create_new(fpath)?;
-            f.write_all(content)?;
-        }
-
-        let dupstore = Arc::new(DashMap::new());
-        let file_queue = Arc::new(Mutex::new(
-            files
-                .iter()
-                .map(|f| FileInfo::new(f.0.clone()).unwrap())
-                .collect::<Vec<FileInfo>>(),
-        ));
-
-        let hw_dupstore = Arc::new(DashMap::new());
-        Processor::sizewise(
-            Arc::new(Params::default()),
-            Arc::new(AtomicBool::new(true)),
-            dupstore.clone(),
-            file_queue,
-            Arc::new(MultiProgress::new()),
+        let files = write_files(
+            &root,
+            vec![
+                ("fileone.bin", generate_bytes(282624)),
+                ("filetwo.bin", generate_bytes(282624)),
+            ],
         )?;
 
-        Processor::hashwise(
-            Arc::new(Params::default()),
-            dupstore.clone(),
-            hw_dupstore.clone(),
-            Arc::new(MultiProgress::new()),
-            Arc::new(AtomicU64::new(32)),
-            300,
-            Arc::new(AtomicBool::new(true)),
-        )?;
-
-        assert_eq!(hw_dupstore.len(), 1);
-
+        let groups = super::group_by_size(files, false);
+        assert_eq!(groups.len(), 1);
         Ok(())
     }
 
     #[test]
-    fn hashwise_sorting_two_files_with_identical_data() -> Result<()> {
+    fn group_by_hash_fast_mode_matches_identical_init_pages() -> Result<()> {
+        let root = TempDir::new()?;
+        let shared = generate_bytes(16384);
+
+        let mut content_x = shared.clone();
+        let mut content_y = shared.clone();
+        content_x.extend(generate_bytes(1720320));
+        content_y.extend(generate_bytes(1720320));
+
+        let files = write_files(
+            &root,
+            vec![("fileone.bin", content_x), ("filetwo.bin", content_y)],
+        )?;
+
+        let groups = super::group_hashed(super::hash_candidates(files, false, 300, false, &crate::cache::Cache::disabled()));
+        assert_eq!(groups.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn group_by_hash_strict_mode_rejects_different_tails() -> Result<()> {
+        let root = TempDir::new()?;
+        let shared = generate_bytes(16384);
+
+        let mut content_x = shared.clone();
+        let mut content_y = shared.clone();
+        content_x.extend(generate_bytes(1720320));
+        content_y.extend(generate_bytes(1720320));
+
+        let files = write_files(
+            &root,
+            vec![("fileone.bin", content_x), ("filetwo.bin", content_y)],
+        )?;
+
+        let groups = super::group_hashed(super::hash_candidates(files, true, 300, false, &crate::cache::Cache::disabled()));
+        assert_eq!(groups.len(), 0);
+        Ok(())
+    }
+
+    #[test]
+    fn group_by_hash_matches_identical_files() -> Result<()> {
         let root = TempDir::new()?;
         let content = generate_bytes(282624);
-        let files = [
-            (root.path().join("fileone.bin"), content.clone()),
-            (root.path().join("filetwo.bin"), content.clone()),
-        ];
 
-        for (fpath, content) in files.iter() {
-            let mut f = File::create_new(fpath)?;
-            f.write_all(content)?;
-        }
-
-        let dupstore = Arc::new(DashMap::new());
-        let file_queue = Arc::new(Mutex::new(
-            files
-                .iter()
-                .map(|f| FileInfo::new(f.0.clone()).unwrap())
-                .collect::<Vec<FileInfo>>(),
-        ));
-
-        let hw_dupstore = Arc::new(DashMap::new());
-        Processor::sizewise(
-            Arc::new(Params::default()),
-            Arc::new(AtomicBool::new(true)),
-            dupstore.clone(),
-            file_queue,
-            Arc::new(MultiProgress::new()),
+        let files = write_files(
+            &root,
+            vec![
+                ("fileone.bin", content.clone()),
+                ("filetwo.bin", content.clone()),
+            ],
         )?;
 
-        Processor::hashwise(
-            Arc::new(Params::default()),
-            dupstore.clone(),
-            hw_dupstore.clone(),
-            Arc::new(MultiProgress::new()),
-            Arc::new(AtomicU64::new(32)),
-            300,
-            Arc::new(AtomicBool::new(true)),
-        )?;
-
-        assert_eq!(hw_dupstore.len(), 1);
-
+        let groups = super::group_hashed(super::hash_candidates(files, false, 300, false, &crate::cache::Cache::disabled()));
+        assert_eq!(groups.len(), 1);
         Ok(())
     }
 
     #[test]
-    fn sizewise_sorting_two_files_of_different_sizes() -> Result<()> {
-        let root = TempDir::new()?;
-        let files = [
-            (root.path().join("fileone.bin"), generate_bytes(282624)),
-            (root.path().join("filetwo.bin"), generate_bytes(1720320)),
-        ];
+    fn hash_candidates_uses_cached_hash_when_valid() {
+        let root = TempDir::new().unwrap();
+        let path = root.path().join("f.bin");
+        let mut f = File::create_new(&path).unwrap();
+        f.write_all(b"real content for cache hit test").unwrap();
+        let info = FileInfo::new(path.clone()).unwrap();
+        let mtime = crate::cache::mtime_nanos(info.modified);
 
-        for (fpath, content) in files.iter() {
-            let mut f = File::create_new(fpath)?;
-            f.write_all(content)?;
-        }
+        let mut cache = crate::cache::Cache::disabled();
+        cache.record(&path, info.size, mtime, false, 0xDEAD_BEEF, 0);
 
-        let file_queue = Arc::new(Mutex::new(
-            files
-                .iter()
-                .map(|f| FileInfo::new(f.0.clone()).unwrap())
-                .collect::<Vec<FileInfo>>(),
-        ));
-
-        let dupstore = Arc::new(DashMap::new());
-
-        Processor::sizewise(
-            Arc::new(Params::default()),
-            Arc::new(AtomicBool::new(true)),
-            dupstore.clone(),
-            file_queue,
-            Arc::new(MultiProgress::new()),
-        )?;
-
-        assert_eq!(dupstore.len(), 2);
-
-        Ok(())
+        let hashed = super::hash_candidates(vec![info], false, 300, false, &cache);
+        assert_eq!(hashed[0].0, 0xDEAD_BEEF);
     }
 
     #[test]
-    fn sizewise_sorting_two_files_of_same_size() -> Result<()> {
-        let root = TempDir::new()?;
-        let files = [
-            (root.path().join("fileone.bin"), generate_bytes(282624)),
-            (root.path().join("filetwo.bin"), generate_bytes(282624)),
-        ];
+    fn hash_candidates_recomputes_when_mtime_differs() {
+        let root = TempDir::new().unwrap();
+        let path = root.path().join("f.bin");
+        let mut f = File::create_new(&path).unwrap();
+        f.write_all(b"real content for cache miss test").unwrap();
+        let info = FileInfo::new(path.clone()).unwrap();
+        let mtime = crate::cache::mtime_nanos(info.modified);
+        let real = info.initpages_hash(300).unwrap();
 
-        for (fpath, content) in files.iter() {
-            let mut f = File::create_new(fpath)?;
-            f.write_all(content)?;
-        }
+        let mut cache = crate::cache::Cache::disabled();
+        cache.record(&path, info.size, mtime + 1, false, 0xDEAD_BEEF, 0);
 
-        let file_queue = Arc::new(Mutex::new(
-            files
-                .iter()
-                .map(|f| FileInfo::new(f.0.clone()).unwrap())
-                .collect::<Vec<FileInfo>>(),
-        ));
-
-        let dupstore = Arc::new(DashMap::new());
-
-        Processor::sizewise(
-            Arc::new(Params::default()),
-            Arc::new(AtomicBool::new(true)),
-            dupstore.clone(),
-            file_queue,
-            Arc::new(MultiProgress::new()),
-        )?;
-
-        assert_eq!(dupstore.len(), 1);
-
-        Ok(())
+        let hashed = super::hash_candidates(vec![info], false, 300, false, &cache);
+        assert_eq!(hashed[0].0, real);
+        assert_ne!(hashed[0].0, 0xDEAD_BEEF);
     }
 }

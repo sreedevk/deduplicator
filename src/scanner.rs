@@ -1,9 +1,6 @@
-use crate::{fileinfo::FileInfo, params::Params};
+use crate::{fileinfo::FileInfo, params::Params, pipeline::spinner};
 use anyhow::Result;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use std::sync::{Arc, Mutex};
-use std::{path::Path, time::Duration};
-
+use std::path::Path;
 use globwalk::{GlobWalker, GlobWalkerBuilder};
 
 pub struct Scanner {
@@ -18,7 +15,7 @@ pub struct Scanner {
 }
 
 impl Scanner {
-    pub fn new(app_args: Arc<Params>) -> Result<Self> {
+    pub fn new(app_args: &Params) -> Result<Self> {
         Ok(Self {
             directory: app_args.get_directory()?.into_boxed_path(),
             include_types: app_args.types.clone(),
@@ -65,6 +62,7 @@ impl Scanner {
             None => Ok(walker),
         }
     }
+
     fn build_walker(&self) -> Result<GlobWalker> {
         let walker = Ok(GlobWalkerBuilder::from_patterns(
             self.directory.clone(),
@@ -77,50 +75,32 @@ impl Scanner {
         Ok(walker.build()?)
     }
 
-    pub fn scan(
-        &self,
-        files: Arc<Mutex<Vec<FileInfo>>>,
-        progress_bar_box: Arc<MultiProgress>,
-    ) -> Result<()> {
-        let progress_bar = match self.progress {
-            true => progress_bar_box.add(ProgressBar::new_spinner()),
-            false => ProgressBar::hidden(),
-        };
-
-        let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {pos:>7} {msg}")?;
-        progress_bar.set_style(progress_style);
-        progress_bar.enable_steady_tick(Duration::from_millis(50));
-        progress_bar.set_message("paths mapped");
+    pub fn scan(&self) -> Result<Vec<FileInfo>> {
+        let bar = spinner(self.progress, "paths mapped");
         let min_size = self.min_size.unwrap_or(0);
 
-        self.build_walker()?
+        let files: Vec<FileInfo> = self
+            .build_walker()?
             .filter_map(Result::ok)
             .map(|entity| entity.into_path())
-            .inspect(|_path| progress_bar.inc(1))
+            .inspect(|_path| bar.inc(1))
             .filter(|path| path.is_file())
             .map(FileInfo::new)
             .filter_map(Result::ok)
             .filter(|file| file.size >= min_size)
-            .for_each(|file| {
-                let mut flock = files.lock().unwrap();
-                flock.push(file);
-            });
+            .collect();
 
-        progress_bar.finish_with_message("paths mapped");
-        Ok(())
+        bar.finish_with_message("paths mapped");
+        Ok(files)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::fileinfo::FileInfo;
     use crate::params::Params;
     use std::fs::File;
-    use std::sync::{Arc, Mutex};
-
-    use super::Scanner;
-    use indicatif::MultiProgress;
     use tempfile::TempDir;
+    use super::Scanner;
 
     #[test]
     fn ensure_file_include_type_filter_includes_expected_file_types() {
@@ -145,26 +125,16 @@ mod tests {
             ..Default::default()
         };
 
-        let progress = Arc::new(MultiProgress::new());
-        let scanlist = Arc::new(Mutex::<Vec<FileInfo>>::new(vec![]));
-        let scanner = Scanner::new(Arc::new(params)).expect("scanner initialization failed");
+        let scanner = Scanner::new(&params).expect("scanner initialization failed");
+        let files = scanner.scan().expect("scanning failed.");
 
-        scanner
-            .scan(scanlist.clone(), progress)
-            .expect("scanning failed.");
-
-        let scan_list_mg = scanlist.lock().unwrap();
-
-        assert!(scan_list_mg.iter().any(|f| f.path.to_str().unwrap()
+        assert!(files.iter().any(|f| f.path.to_str().unwrap()
             == root.path().join("this-is-a-js-file.js").to_str().unwrap()));
-
-        assert!(scan_list_mg.iter().any(|f| f.path.to_str().unwrap()
+        assert!(files.iter().any(|f| f.path.to_str().unwrap()
             == root.path().join("this-is-a-csv-file.csv").to_str().unwrap()));
-
-        assert!(scan_list_mg.iter().all(|f| f.path.to_str().unwrap()
+        assert!(files.iter().all(|f| f.path.to_str().unwrap()
             != root.path().join("this-is-a-css-file.css").to_str().unwrap()));
-
-        assert!(scan_list_mg.iter().all(|f| f.path.to_str().unwrap()
+        assert!(files.iter().all(|f| f.path.to_str().unwrap()
             != root.path().join("this-is-a-rust-file.rs").to_str().unwrap()));
     }
 
@@ -191,26 +161,19 @@ mod tests {
             ..Default::default()
         };
 
-        let progress = Arc::new(MultiProgress::new());
-        let scanlist = Arc::new(Mutex::<Vec<FileInfo>>::new(vec![]));
-        let scanner = Scanner::new(Arc::new(params)).expect("scanner initialization failed");
+        let scanner = Scanner::new(&params).expect("scanner initialization failed");
+        let files = scanner.scan().expect("scanning failed.");
 
-        scanner
-            .scan(scanlist.clone(), progress)
-            .expect("scanning failed.");
-
-        let scan_list_mg = scanlist.lock().unwrap();
-
-        assert!(scan_list_mg.iter().all(|f| f.path.to_str().unwrap()
+        assert!(files.iter().all(|f| f.path.to_str().unwrap()
             != root.path().join("this-is-a-js-file.js").to_str().unwrap()));
 
-        assert!(scan_list_mg.iter().all(|f| f.path.to_str().unwrap()
+        assert!(files.iter().all(|f| f.path.to_str().unwrap()
             != root.path().join("this-is-a-csv-file.csv").to_str().unwrap()));
 
-        assert!(scan_list_mg.iter().any(|f| f.path.to_str().unwrap()
+        assert!(files.iter().any(|f| f.path.to_str().unwrap()
             == root.path().join("this-is-a-css-file.css").to_str().unwrap()));
 
-        assert!(scan_list_mg.iter().any(|f| f.path.to_str().unwrap()
+        assert!(files.iter().any(|f| f.path.to_str().unwrap()
             == root.path().join("this-is-a-rust-file.rs").to_str().unwrap()));
     }
 
@@ -238,23 +201,16 @@ mod tests {
             ..Default::default()
         };
 
-        let progress = Arc::new(MultiProgress::new());
-        let scanlist = Arc::new(Mutex::<Vec<FileInfo>>::new(vec![]));
-        let scanner = Scanner::new(Arc::new(params)).expect("scanner initialization failed");
+        let scanner = Scanner::new(&params).expect("scanner initialization failed");
+        let files = scanner.scan().expect("scanning failed.");
 
-        scanner
-            .scan(scanlist.clone(), progress)
-            .expect("scanning failed.");
-
-        let scan_list_mg = scanlist.lock().unwrap();
-
-        assert!(scan_list_mg.iter().any(|f| f.path.to_str().unwrap()
+        assert!(files.iter().any(|f| f.path.to_str().unwrap()
             == root.path().join("this-is-a-js-file.js").to_str().unwrap()));
 
-        assert!(scan_list_mg.iter().all(|f| f.path.to_str().unwrap()
+        assert!(files.iter().all(|f| f.path.to_str().unwrap()
             != root.path().join("this-is-a-csv-file.csv").to_str().unwrap()));
 
-        assert!(scan_list_mg.iter().any(|f| f.path.to_str().unwrap()
+        assert!(files.iter().any(|f| f.path.to_str().unwrap()
             == root.path().join("this-is-a-rust-file.rs").to_str().unwrap()));
     }
 }
