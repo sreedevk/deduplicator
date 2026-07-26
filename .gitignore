@@ -2,3 +2,6 @@
 /Cargo.lock
 /result-bin
 /.bacon-locations
+/docs
+/.claude
+/.superpowers

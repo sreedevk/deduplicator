@@ -1,11 +1,9 @@
-use crate::{fileinfo::FileInfo, params::Params};
+use crate::{fileinfo::FileInfo, params::Params, pipeline::DedupReport};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use dashmap::DashMap;
 use pathdiff::diff_paths;
 use rayon::prelude::*;
-use std::sync::atomic::AtomicU64;
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 const YELLOW: &str = "\x1b[33m";
 const RESET: &str = "\x1b[0m";
@@ -34,47 +32,39 @@ impl Formatter {
         Ok(modified_time.format("%Y-%m-%d %H:%M:%S").to_string())
     }
 
-    pub fn print(raw: Arc<DashMap<u128, Vec<FileInfo>>>, max_path_len: u64, aargs: &Params) {
-        print!("{}", "\n".repeat(if aargs.progress { 2 } else { 1 })); // spacing
+    pub fn print(report: &DedupReport, aargs: &Params) {
+        print!("{}", "\n".repeat(if aargs.progress { 2 } else { 1 }));
 
-        if raw.is_empty() {
+        if report.groups.is_empty() {
             println!("No duplicates found matching your search criteria.");
-        } else {
-            let printed_count: AtomicU64 = AtomicU64::new(0);
-
-            raw.par_iter().for_each(|sref| {
-                if sref.value().len() > 1 {
-                    printed_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                    let mut ostring = format!("{}{:32x}{}\n", YELLOW, sref.key(), RESET);
-                    let subfields = sref
-                        .value()
-                        .par_iter()
-                        .enumerate()
-                        .map(|(i, finfo)| {
-                            let nodechar = if i == sref.value().len() - 1 {
-                                "└─"
-                            } else {
-                                "├─"
-                            };
-                            format!(
-                                "{}\t{}\t{}\t{}\n",
-                                nodechar,
-                                Self::human_path(finfo, aargs, max_path_len as usize)
-                                    .expect("path formatting failed."),
-                                Self::human_filesize(finfo).expect("filesize formatting failed."),
-                                Self::human_mtime(finfo).expect("modified time formatting failed.")
-                            )
-                        })
-                        .collect::<String>();
-
-                    ostring.push_str(&subfields);
-                    println!("{ostring}");
-                }
-            });
-
-            if printed_count.load(std::sync::atomic::Ordering::Relaxed) < 1 {
-                println!("No duplicates found matching your search criteria.");
-            }
+            return;
         }
+
+        report.groups.par_iter().for_each(|group| {
+            let mut ostring = format!("{}{:32x}{}\n", YELLOW, group.hash, RESET);
+            let subfields = group
+                .files
+                .par_iter()
+                .enumerate()
+                .map(|(i, finfo)| {
+                    let nodechar = if i == group.files.len() - 1 {
+                        "└─"
+                    } else {
+                        "├─"
+                    };
+                    format!(
+                        "{}\t{}\t{}\t{}\n",
+                        nodechar,
+                        Self::human_path(finfo, aargs, report.max_path_len)
+                            .expect("path formatting failed."),
+                        Self::human_filesize(finfo).expect("filesize formatting failed."),
+                        Self::human_mtime(finfo).expect("modified time formatting failed.")
+                    )
+                })
+                .collect::<String>();
+
+            ostring.push_str(&subfields);
+            println!("{ostring}");
+        });
     }
 }

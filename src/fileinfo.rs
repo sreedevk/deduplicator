@@ -5,22 +5,14 @@ use std::{
     fs,
     io::Read,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
     time::SystemTime,
 };
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum FileState {
-    Unprocessed,
-    SwProcessed,
-}
 
 #[derive(Debug, Clone)]
 pub struct FileInfo {
     pub path: Box<Path>,
     pub size: u64,
     pub modified: SystemTime,
-    pub state: Arc<Mutex<FileState>>,
 }
 
 impl FileInfo {
@@ -53,18 +45,7 @@ impl FileInfo {
             path: path.into_boxed_path(),
             size: filemeta.len(),
             modified: filemeta.modified()?,
-            state: Arc::new(Mutex::new(FileState::Unprocessed)),
         })
-    }
-
-    pub fn sw_processed(&self) {
-        let mut self_state = self.state.lock().unwrap();
-        *self_state = FileState::SwProcessed;
-    }
-
-    pub fn is_sw_processed(&self) -> bool {
-        let self_state = self.state.lock().unwrap();
-        *self_state == FileState::SwProcessed
     }
 }
 
