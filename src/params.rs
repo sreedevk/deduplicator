@@ -18,6 +18,12 @@ pub struct Params {
     /// Delete files interactively
     #[arg(long, short)]
     pub interactive: bool,
+    /// Keep one file per duplicate group by this rule and remove the rest
+    #[arg(long, conflicts_with = "interactive")]
+    pub keep: Option<crate::resolver::KeepStrategy>,
+    /// Actually delete the duplicates (without this, --keep only previews)
+    #[arg(long, visible_alias = "yes", requires = "keep")]
+    pub force: bool,
     /// Minimum filesize of duplicates to scan (e.g., 100B/1K/2M/3G/4T).
     #[arg(long, short = 'm', default_value = "1b")]
     pub min_size: Option<String>,

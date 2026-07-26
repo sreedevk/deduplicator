@@ -2,6 +2,7 @@ use crate::{fileinfo::FileInfo, formatter::Formatter, params::Params, pipeline::
 use anyhow::Result;
 use prettytable::{format, row, Table};
 use std::io::{self, Write};
+use unicode_segmentation::UnicodeSegmentation;
 
 pub struct Interactive;
 
@@ -20,7 +21,7 @@ impl Interactive {
 
             let max_path_size = files
                 .iter()
-                .map(|f| f.path.iter().count())
+                .map(|f| f.path.to_string_lossy().graphemes(true).count())
                 .max()
                 .unwrap_or_default();
 

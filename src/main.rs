@@ -4,6 +4,7 @@ mod interactive;
 mod params;
 mod pipeline;
 mod processor;
+mod resolver;
 mod scanner;
 
 use self::{formatter::Formatter, interactive::Interactive};
@@ -15,9 +16,12 @@ fn main() -> Result<()> {
     let params = Params::parse();
     let report = pipeline::run(&params)?;
 
-    match params.interactive {
-        false => Formatter::print(&report, &params),
-        true => Interactive::init(&report.groups, &params)?,
+    match params.keep {
+        Some(strategy) => resolver::run(&report, strategy, params.force, &params)?,
+        None => match params.interactive {
+            true => Interactive::init(&report.groups, &params)?,
+            false => Formatter::print(&report, &params),
+        },
     }
 
     Ok(())
