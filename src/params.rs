@@ -48,6 +48,9 @@ pub struct Params {
     /// Use a specific cache file instead of the default location
     #[arg(long, value_name = "PATH")]
     pub cache_file: Option<PathBuf>,
+    /// Browse and resolve duplicates in an interactive terminal UI
+    #[arg(long, conflicts_with_all = ["keep", "interactive"])]
+    pub tui: bool,
 }
 
 impl Params {

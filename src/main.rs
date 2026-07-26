@@ -7,6 +7,7 @@ mod pipeline;
 mod processor;
 mod resolver;
 mod scanner;
+mod tui;
 
 use self::{formatter::Formatter, interactive::Interactive};
 use anyhow::Result;
@@ -17,12 +18,11 @@ fn main() -> Result<()> {
     let params = Params::parse();
     let report = pipeline::run(&params)?;
 
-    match params.keep {
-        Some(strategy) => resolver::run(&report, strategy, params.force, &params)?,
-        None => match params.interactive {
-            true => Interactive::init(&report.groups, &params)?,
-            false => Formatter::print(&report, &params),
-        },
+    match (params.tui, params.keep, params.interactive) {
+        (true, _, _) => tui::run(report, &params)?,
+        (false, Some(strategy), _) => resolver::run(&report, strategy, params.force, &params)?,
+        (false, None, true) => Interactive::init(&report.groups, &params)?,
+        (false, None, false) => Formatter::print(&report, &params),
     }
 
     Ok(())
