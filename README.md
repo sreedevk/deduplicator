@@ -1,11 +1,11 @@
 <h1 align="center">Deduplicator</h1>
 
-> [!NOTE]
-> This project is maintained with the assistance of AI tools. All changes are subject to manual review and a comprehensive test suite to ensure stability and quality.
-
 <p align="center">
   Find, Sort, Filter & Delete duplicate files 
 </p>
+
+> [!NOTE]
+> This project is maintained with the assistance of AI tools. All changes are subject to manual review and a comprehensive test suite to ensure stability and quality.
 
 ## Usage
 
